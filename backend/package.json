@@ -1,0 +1,33 @@
+{
+  "name": "nodejs-express-sequelize-postgresql",
+  "version": "1.0.0",
+  "description": "Node.js Res Apis with Express? Sequelize & Postgres",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "sequekize",
+    "postgresql",
+    "rest",
+    "api"
+  ],
+  "author": "Suleyman",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "module-alias": "^2.2.3",
+    "pg": "^8.13.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5"
+  },
+  "_moduleAliases": {
+    "@root": ".",
+    "@app": "./app"
+  }
+}
