@@ -7,22 +7,17 @@
       <DropdownCheckbox v-model:filters="AON_EPOCHES" v-model:selectedFilters="AON_EPOCHES_selected">
         Эпоха ▼
       </DropdownCheckbox>
-      <n-dropdown trigger="click" :options="colorizeFilterOptions"
-        @select="handleSelect">
+      <n-dropdown trigger="click" :options="colorizeFilterOptions" @select="handleSelect">
         <n-button>Раскраска ▼</n-button>
       </n-dropdown>
     </HeaderTools>
-    <YandexMap class="map-container"
-      :api-key="YM_API_KEY"
-      :center="[34.36, 45.15]"
-      :zoom="8"
-      :filters="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER, types_list: AON_TYPES, epochs_list: AON_EPOCHES}"
-      @map-click="getAddress"
-    />
-    <FooterLegenda class="footer" :filters="[AON_TYPES, AON_EPOCHES]" :filters_selected="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER }"></FooterLegenda>
-    <SearchByCoordModal
-      ref="searchModalRef"
-    />
+    <YandexMap class="map-container" :api-key="YM_API_KEY" :center="[34.36, 45.15]" :zoom="8"
+      :filters="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER, types_list: AON_TYPES, epochs_list: AON_EPOCHES }"
+      @map-click="getAddress" />
+    <FooterLegenda class="footer" :filters="[AON_TYPES, AON_EPOCHES]"
+      :filters_selected="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER }">
+    </FooterLegenda>
+    <SearchByCoordModal ref="searchModalRef" />
   </div>
 </template>
 
@@ -33,7 +28,7 @@ import YandexMap from '@/components/YandexMap.vue';
 import FooterLegenda from '@/components/UI/FooterLegenda/FooterLegenda.vue';
 import DropdownCheckbox from '@/components/UI/DropboxCheckboxs/DropdownCheckboxs.vue';
 import SearchByCoordModal from '@/components/SearchByCoordModal.vue';
-import { NDropdown, NButton } from 'naive-ui';
+import { NDropdown, NButton, NLayout, NLayoutHeader, NLayoutContent, NFlex, } from 'naive-ui';
 
 export default defineComponent({
   name: 'App',
@@ -45,6 +40,10 @@ export default defineComponent({
     FooterLegenda,
     NDropdown,
     NButton,
+    NLayout,
+    NLayoutHeader,
+    NLayoutContent,
+    NFlex,
   },
   setup() {
     // Задаём реактивные переменные для фильтров

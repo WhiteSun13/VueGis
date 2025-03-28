@@ -1,3 +1,6 @@
 .footerLegenda {
-    padding: 10px 20px; 
+    bottom: 0; 
+    width: 100%; 
+    padding: 10px 20px;
+    background-color: white;
 }
