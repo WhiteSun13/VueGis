@@ -1,5 +1,13 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
+// frontend/src/router/index.js
+import { createRouter, createWebHistory } from 'vue-router';
+import HomeView from '@/views/HomeView.vue';
+import LoginView from '@/views/LoginView.vue'; // Импортируем компонент входа
+import AdminPanelView from '@/views/AdminPanelView.vue'; // Импортируем компонент админ-панели
+
+// Функция для проверки наличия токена аутентификации
+function isAuthenticated() {
+  return !!localStorage.getItem('authToken');
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,16 +23,49 @@ const router = createRouter({
       component: () => import('@/views/AboutView.vue'),
     },
     {
+      path: '/login', // Маршрут для страницы входа
+      name: 'login',
+      component: LoginView,
+      beforeEnter: (to, from, next) => {
+        // Если пользователь уже аутентифицирован, перенаправляем его в админ-панель
+        if (isAuthenticated()) {
+          next({ name: 'adminpanel' });
+        } else {
+          next(); // Иначе разрешаем доступ к странице входа
+        }
+      },
+    },
+    {
       path: '/adminpanel',
       name: 'adminpanel',
-      component: () => import('@/views/AdminPanelView.vue'),
+      component: AdminPanelView,
+      meta: { requiresAuth: true }, // Помечаем маршрут как требующий аутентификации
     },
-    // { 
-    //   path: '/article/:id(\d+)',
+    // {
+    //   path: '/article/:id(\\d+)',
     //   name: 'article',
     //   component: () => import('../views/ArticleView.vue'),
     // },
   ],
-})
+});
 
-export default router
+// Глобальный навигационный хук (guard)
+router.beforeEach((to, from, next) => {
+  // Проверяем, требует ли маршрут аутентификации
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    // Если требует, но пользователь не аутентифицирован
+    if (!isAuthenticated()) {
+      // Перенаправляем на страницу входа
+      next({
+        name: 'login',
+        query: { redirect: to.fullPath } // Сохраняем путь, куда пользователь хотел попасть
+      });
+    } else {
+      next(); // Пользователь аутентифицирован, разрешаем переход
+    }
+  } else {
+    next(); // Маршрут не требует аутентификации, разрешаем переход
+  }
+});
+
+export default router;
