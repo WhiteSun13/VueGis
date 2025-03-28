@@ -152,6 +152,6 @@ export default defineComponent({
 .map-container {
   flex: 1 1 auto;
   position: relative;
-  min-height: 0; /* Firefox Fix */
+  min-height: 0;
 }
 </style>

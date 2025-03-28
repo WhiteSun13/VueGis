@@ -1,4 +1,7 @@
 .footerLegenda {
+    flex: none;
     flex-shrink: 0;
     margin: 8px 10px;
+    z-index: 1000;
+    background-color: white;
 }
