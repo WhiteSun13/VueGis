@@ -1,5 +1,5 @@
 <template>
-    <footer class="footerLegenda">
+    <n-layout-footer class="footerLegenda" bordered position="absolute">
         <n-flex v-if="filters_selected.colorBy === 'byType'">
             <LegendItem :items="filteredTypes" />
         </n-flex>
@@ -9,17 +9,17 @@
         <n-flex v-else-if="filters_selected.colorBy === 'oneColor'">
             <LegendItem :items="[{ value: 'oneColor', label: 'Археологический памятник', color: '#ff931e' }]" />
         </n-flex>
-    </footer>
+    </n-layout-footer>
 </template>
 
 <script>
 import { defineComponent, computed } from 'vue'
-import { NAvatar, NFlex } from 'naive-ui'
+import { NAvatar, NFlex, NLayoutFooter } from 'naive-ui'
 import LegendItem from './LegendItem.vue'
 
 export default defineComponent({
     name: "FooterLegenda",
-    components: { NAvatar, NFlex, LegendItem },
+    components: { NAvatar, NFlex, NLayoutFooter, LegendItem },
     props: {
         filters: { type: Array, required: true },
         filters_selected: { type: Object, required: true }
