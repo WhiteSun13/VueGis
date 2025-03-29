@@ -2,36 +2,50 @@
   <n-layout style="height: 100vh">
     <n-layout-header bordered style="padding: 15px 20px;">
       <n-flex justify="space-between">
-        <n-h3 style="margin: 0;">Панель Администратора</n-h3>
+        <n-h3>Панель Администратора</n-h3>
         <n-space>
-           <span v-if="adminUsername">Привет, {{ adminUsername }}!</span>
-           <n-button type="error" ghost @click="handleLogout" :loading="logoutLoading">
-             Выход
-           </n-button>
+          <span v-if="adminUsername">Привет, {{ adminUsername }}!</span>
+          <n-button type="error" ghost @click="handleLogout" :loading="logoutLoading">
+            Выход
+          </n-button>
         </n-space>
       </n-flex>
     </n-layout-header>
     <n-layout-content content-style="padding: 20px;">
-       <n-spin :show="loading">
-         <div v-if="!loading && authError">
-            <n-alert title="Ошибка аутентификации" type="error">
-                Не удалось подтвердить вашу сессию. Пожалуйста, <router-link :to="{name: 'login'}">войдите</router-link> снова.
-                <br> {{ authError }}
-            </n-alert>
-         </div>
-         <div v-else-if="!loading">
-           <n-h4>Добро пожаловать в панель администратора!</n-h4>
-           <p>Здесь будет основной контент для управления данными.</p>
-           <!-- Добавьте сюда компоненты для управления точками, типами, эпохами и т.д. -->
-           <!-- Например: -->
-           <!-- <AdminPointsTable /> -->
-           <!-- <AdminTypesManagement /> -->
-         </div>
-       </n-spin>
+      <n-spin :show="loading">
+        <div v-if="!loading && authError">
+          <n-alert title="Ошибка аутентификации" type="error">
+            Не удалось подтвердить вашу сессию. Пожалуйста, <router-link :to="{ name: 'login' }">войдите</router-link>
+            снова.
+            <br> {{ authError }}
+          </n-alert>
+        </div>
+        <div v-else-if="!loading">
+          <n-h4>Добро пожаловать в панель администратора!</n-h4>
+          <n-grid x-gap="12" cols="1 400:2 600:4">
+            <n-gi>
+              <n-card :title="'Метки'">
+                Добавить или редактировать метку
+              </n-card>
+            </n-gi>
+            <n-gi>
+              <n-card :title="'Типы ОАН'">
+                Добавить или редактировать тип
+              </n-card>
+            </n-gi>
+            <n-gi>
+              <n-card :title="'Эпохи'">
+                Добавить или редактировать эпоху
+              </n-card>
+            </n-gi>
+          </n-grid>
+        </div>
+      </n-spin>
     </n-layout-content>
-    <n-layout-footer bordered position="absolute" style="bottom: 0; width: 100%; padding: 10px 20px; text-align: center;">
+    <!-- <n-layout-footer bordered position="absolute"
+      style="bottom: 0; width: 100%; padding: 10px 20px; text-align: center;">
       Admin Panel © {{ new Date().getFullYear() }}
-    </n-layout-footer>
+    </n-layout-footer> -->
   </n-layout>
 </template>
 
@@ -39,7 +53,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '@/components/services/api.js'; // Импортируем настроенный Axios
-import { NLayout, NLayoutHeader, NLayoutContent, NLayoutFooter, NFlex, NH3, NH4, NButton, NSpace, NSpin, NAlert } from 'naive-ui';
+import { NLayout, NLayoutHeader, NLayoutContent, NLayoutFooter, NFlex, NH3, NH4, NButton, NSpace, NSpin, NAlert, NCard, NGrid, NGi } from 'naive-ui';
 
 const router = useRouter();
 const loading = ref(true); // Показываем спиннер при проверке токена
@@ -90,9 +104,11 @@ onMounted(() => {
 .n-layout-header {
   height: 60px;
 }
+
 .n-layout-footer {
   height: 40px;
 }
+
 .n-layout-content {
   padding-bottom: 40px;
 }

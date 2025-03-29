@@ -1,6 +1,6 @@
 <template>
     <div class="login-container">
-      <n-card title="Вход в панель администратора" class="login-card">
+      <n-card title="Вход" class="login-card">
         <n-form @submit.prevent="handleLogin">
           <n-form-item-row label="Имя пользователя">
             <n-input v-model:value="username" placeholder="Введите имя пользователя" />

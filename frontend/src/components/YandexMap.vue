@@ -5,7 +5,7 @@
 <script>
 import { watch } from 'vue';
 import axios from 'axios'
-import { getElibrarySearchLink } from './services/utils.vue';
+import { getElibrarySearchLink, getGoogleSearchLink, getYandexSearchLink } from './services/utils.vue';
 
 export default {
     name: 'YandexMap',
@@ -16,7 +16,7 @@ export default {
         },
         center: {
             type: Array,
-            default: () => [45.28, 34.19]
+            default: () => [34.36, 45.15]
         },
         zoom: {
             type: Number,
@@ -49,7 +49,8 @@ export default {
             ymaps.ready(() => {
                 const map = new ymaps.Map(this.$refs.map, {
                     center: this.center,
-                    zoom: this.zoom
+                    zoom: this.zoom,
+                    controls: ['smallMapDefaultSet']
                 });
 
                 // Open Street Map слой //
@@ -79,7 +80,7 @@ export default {
 
                 // Создаем LoadingObjectManager с шаблоном URL и callback //
                 let loader = new ymaps.LoadingObjectManager(
-                    'http://localhost:3000/api/data?bbox=%b',
+                    `${import.meta.env.VITE_API_URL}/data?bbox=%b`,
                     {
                         paddingTemplate: "myCallback_%b",
                         jsonp: true,
@@ -107,15 +108,18 @@ export default {
                 // Функция для получения описания точки с сервера по её id
                 function loadBalloonData(objectId) {
                     var dataDeferred = ymaps.vow.defer();
-                    axios.get(`http://localhost:3000/api/points/${objectId}`)
+                    axios.get(`${import.meta.env.VITE_API_URL}/points/${objectId}`)
                         .then(response => {
                             dataDeferred.resolve(
                                 `<h3>${response.data.name}</h3>
                                 <b>Тип:</b> ${response.data.type}<br>
                                 <b>Эпоха:</b> ${response.data.epoch}<br>
                                 <b>Район:</b> ${response.data.admin_division_name}<br>
-                                ${response.data.description != null ? response.data.description : "Описание отсутствует"}<br>
-                                <a href="${getElibrarySearchLink(response.data.name)}" target="_blank" rel="noopener noreferrer">Поиск в Elibrary</a>`);
+                                ${response.data.short_description != null ? response.data.short_description : "Описание отсутствует"}<br>
+                                <a href="/site/${objectId}">Подробнее</a><br><br>
+                                <a href="${getElibrarySearchLink(response.data.name)}" target="_blank" rel="noopener noreferrer">Поиск в Elibrary</a>, 
+                                <a href="${getGoogleSearchLink(response.data.name)}" target="_blank" rel="noopener noreferrer">Google</a>, 
+                                <a href="${getYandexSearchLink(response.data.name)}" target="_blank" rel="noopener noreferrer">Яндекс</a>`);
                         })
                         .catch(error => {
                             console.error('Ошибка при загрузке описания:', error);

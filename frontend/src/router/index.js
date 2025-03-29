@@ -3,6 +3,9 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '@/views/HomeView.vue';
 import LoginView from '@/views/LoginView.vue'; // Импортируем компонент входа
 import AdminPanelView from '@/views/AdminPanelView.vue'; // Импортируем компонент админ-панели
+// Импортируем новый компонент для детальной страницы памятника
+// Можно использовать ленивую загрузку для лучшей производительности
+const SiteDetailView = () => import('@/views/SiteDetailView.vue');
 
 // Функция для проверки наличия токена аутентификации
 function isAuthenticated() {
@@ -40,6 +43,13 @@ const router = createRouter({
       name: 'adminpanel',
       component: AdminPanelView,
       meta: { requiresAuth: true }, // Помечаем маршрут как требующий аутентификации
+    },
+    {
+      // Путь с динамическим параметром :id
+      // (\\d+) - регулярное выражение, гарантирующее, что id будет состоять только из цифр
+      path: '/site/:id(\\d+)',
+      name: 'site-detail', // Имя маршрута для использования в <router-link> или router.push
+      component: SiteDetailView, // Связываем путь с созданным компонентом
     },
     // {
     //   path: '/article/:id(\\d+)',

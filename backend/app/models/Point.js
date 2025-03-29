@@ -20,6 +20,11 @@ const Point = sequelize.define('Point', {
     allowNull: false // NOT NULL из схемы
   },
   // Описание объекта
+  short_description: {
+    type: DataTypes.STRING(700),
+    allowNull: true // В схеме нет NOT NULL
+  },
+  // Описание объекта
   description: {
     type: DataTypes.TEXT,
     allowNull: true // В схеме нет NOT NULL

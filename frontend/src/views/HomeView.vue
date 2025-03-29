@@ -11,9 +11,14 @@
         <n-button>Раскраска ▼</n-button>
       </n-dropdown>
     </HeaderTools>
-    <YandexMap class="map-container" :api-key="YM_API_KEY" :center="[34.36, 45.15]" :zoom="8"
+    <YandexMap
+      class="map-container"
+      :api-key="YM_API_KEY"
+      :center="mapCenter"
+      :zoom="mapZoom"
       :filters="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER, types_list: AON_TYPES, epochs_list: AON_EPOCHES }"
-      @map-click="getAddress" />
+      @map-click="getAddress"
+    />
     <FooterLegenda class="footer" :filters="[AON_TYPES, AON_EPOCHES]"
       :filters_selected="{ types: AON_TYPES_selected, epochs: AON_EPOCHES_selected, colorBy: COLORIZE_FILTER }">
     </FooterLegenda>
@@ -23,6 +28,8 @@
 
 <script>
 import { ref, onMounted, defineComponent } from 'vue';
+// Импортируем useRoute для доступа к параметрам текущего маршрута
+import { useRoute } from 'vue-router';
 import HeaderTools from '@/components/UI/Header.vue';
 import YandexMap from '@/components/YandexMap.vue';
 import FooterLegenda from '@/components/UI/FooterLegenda/FooterLegenda.vue';
@@ -46,6 +53,54 @@ export default defineComponent({
     NFlex,
   },
   setup() {
+    // Получаем доступ к текущему маршруту
+    const route = useRoute();
+
+    // --- Начало: Логика определения центра карты ---
+    const defaultCenter = [34.36, 45.15]; // [longitude, latitude]
+    const mapCenter = ref([...defaultCenter]); // Используем [...defaultCenter] для создания копии
+    const latFromQuery = route.query.lat;
+    const lonFromQuery = route.query.lon;
+
+    if (latFromQuery && lonFromQuery) {
+      const parsedLat = parseFloat(latFromQuery);
+      const parsedLon = parseFloat(lonFromQuery);
+      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+        mapCenter.value = [parsedLon, parsedLat];
+        console.log('Центр карты установлен из параметров URL:', mapCenter.value);
+      } else {
+        console.warn('Некорректные значения lat/lon в URL, используется центр по умолчанию.');
+      }
+    } else {
+      console.log('Параметры lat/lon в URL отсутствуют, используется центр по умолчанию.');
+    }
+    // --- Конец: Логика определения центра карты ---
+
+    // --- Начало: Логика определения уровня масштабирования (Zoom) ---
+    const defaultZoom = 8; // Уровень масштабирования по умолчанию
+    const mapZoom = ref(defaultZoom); // Реактивная переменная для zoom
+    const zoomFromQuery = route.query.z; // Получаем параметр 'zoom' из URL
+
+    if (zoomFromQuery) {
+      // Пытаемся преобразовать значение из URL в целое число
+      const parsedZoom = parseInt(zoomFromQuery, 10); // Указываем основание 10
+
+      // Проверяем, является ли результат валидным числом и находится ли в разумном диапазоне
+      // (Yandex Maps обычно поддерживает zoom от 0 до 21, можно уточнить)
+      if (!isNaN(parsedZoom) && parsedZoom >= 0 && parsedZoom <= 21) {
+         mapZoom.value = parsedZoom;
+         console.log('Уровень масштабирования установлен из параметра URL:', mapZoom.value);
+      } else {
+        // Если парсинг не удался или значение вне диапазона, выводим предупреждение
+        console.warn('Некорректное или недопустимое значение zoom в URL, используется zoom по умолчанию.');
+      }
+    } else {
+      // Если параметр zoom отсутствует, сообщаем, что используется значение по умолчанию
+      console.log('Параметр zoom в URL отсутствует, используется zoom по умолчанию.');
+    }
+    // --- Конец: Логика определения уровня масштабирования (Zoom) ---
+
+
     // Задаём реактивные переменные для фильтров
     const AON_TYPES = ref([]);
     const AON_EPOCHES = ref([]);
@@ -58,7 +113,7 @@ export default defineComponent({
     // Функция для загрузки фильтров с сервера
     const loadFilters = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/filters');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/filters`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -94,7 +149,7 @@ export default defineComponent({
       if (!isActive.value) return;
       try {
         const response = await fetch(
-          `http://localhost:3000/api/check-location?lon=${coords[0]}&lat=${coords[1]}`
+          `${import.meta.env.VITE_API_URL}/check-location?lon=${coords[0]}&lat=${coords[1]}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -130,6 +185,9 @@ export default defineComponent({
       handleSelect(key) {
         COLORIZE_FILTER.value = String(key);
       },
+      // Возвращаем mapCenter и mapZoom, чтобы использовать их в шаблоне
+      mapCenter,
+      mapZoom, // Добавлено
     };
   },
 });
