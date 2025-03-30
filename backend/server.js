@@ -9,15 +9,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const corsOptions = {
-  // origin: "http://172.19.44.133"
-  origin: "http://localhost:5173"
+  origin: "http://localhost"
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
 // Используем все маршруты
-app.use('/api/', routes);
+app.use('/', routes);
 
 // Проверка подключения к БД и запуск сервера
 sequelize.authenticate()

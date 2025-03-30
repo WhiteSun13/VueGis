@@ -5,10 +5,6 @@ services:
     build: ./frontend
     ports:
       - "80:80"
-    environment:
-      VITE_YANDEX_MAPS_API_KEY: ''
-      VITE_YANDEX_MAPS_STATIC_API_KEY: ''
-      VITE_API_URL: 'http://localhost:3000/api'
     depends_on:
       - backend
     networks:
@@ -19,11 +15,16 @@ services:
     ports:
       - "3000:3000"
     environment:
+      PORT: 3000
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
       DB_NAME: geodb
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD_HASH: $$2b$$10$$lCxgHGe69we2.XANepOc8ubBEToPBU5GZzODCM5h43ILypoPAAvR.
+      JWT_SECRET: 'B25FlgLoiDe46'
+      JWT_EXPIRES_IN: '1h'
     depends_on:
       db:
         condition: service_healthy
