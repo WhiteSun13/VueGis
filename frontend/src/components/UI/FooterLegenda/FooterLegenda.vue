@@ -1,5 +1,5 @@
 <template>
-    <n-layout-footer class="footerLegenda" bordered position="absolute">
+    <n-layout-footer class="footerLegenda" bordered >
         <n-flex v-if="filters_selected.colorBy === 'byType'">
             <LegendItem :items="filteredTypes" />
         </n-flex>
