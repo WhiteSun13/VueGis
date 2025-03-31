@@ -25,9 +25,15 @@ services:
       ADMIN_PASSWORD_HASH: $$2b$$10$$lCxgHGe69we2.XANepOc8ubBEToPBU5GZzODCM5h43ILypoPAAvR.
       JWT_SECRET: 'B25FlgLoiDe46'
       JWT_EXPIRES_IN: '1h'
+      # Добавляем переменные для Redis
+      REDIS_HOST: redis        # Имя сервиса Redis в Docker Compose
+      REDIS_PORT: 6379         # Стандартный порт Redis
     depends_on:
       db:
         condition: service_healthy
+      # Добавляем зависимость от Redis
+      redis:
+        condition: service_started # Достаточно, чтобы сервис запустился
     networks:
       - app-network
 
@@ -50,8 +56,19 @@ services:
     networks:
       - app-network
 
+  # Добавляем сервис Redis
+  redis:
+    image: redis:alpine          # Используем легковесный образ Redis
+    ports:
+      - "6379:6379"             # Пробрасываем порт для возможного внешнего доступа/отладки
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data        # Сохраняем данные Redis
+
 volumes:
   postgres-data:
+  redis-data:                  # Том для данных Redis
 
 networks:
   app-network:
