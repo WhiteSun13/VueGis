@@ -1,14 +1,22 @@
 const { Point, SiteType, SiteEpoch, AdminArea, sequelize } = require('@app/models');
-const { Op } = require('sequelize'); // Импортируем операторы Sequelize
+const { Op } = require('sequelize');
+const redisClient = require('@app/config/redis'); // Импортируем клиент Redis
 
-// Вспомогательная функция для получения параметров пагинации
+// Константы для кеширования
+const CACHE_TTL_ADMIN_LISTS = 3600; // 1 час для списков в админке
+const CACHE_KEY_ADMIN_TYPES = 'cache:admin:types';
+const CACHE_KEY_ADMIN_EPOCHS = 'cache:admin:epochs';
+const CACHE_KEY_ADMIN_DIVISIONS = 'cache:admin:adminDivisions';
+const CACHE_KEY_FILTERS = 'cache:filters'; // Ключ для публичных фильтров
+const CACHE_PREFIX_POINT = 'cache:point:'; // Префикс для кеша отдельных точек
+
+// --- Вспомогательные функции пагинации ---
 const getPagination = (page, size) => {
   const limit = size ? +size : 10; // Количество записей на странице (по умолчанию 10)
   const offset = page ? (page - 1) * limit : 0; // Смещение (начинаем с 0)
   return { limit, offset };
 };
 
-// Вспомогательная функция для формирования ответа с пагинацией
 const getPagingData = (data, page, limit) => {
   const { count: totalItems, rows: items } = data;
   const currentPage = page ? +page : 1;
@@ -16,21 +24,71 @@ const getPagingData = (data, page, limit) => {
   return { totalItems, items, totalPages, currentPage };
 };
 
-
-// --- Управление SiteType (Типы ОАН) ---
-// ... (код для типов остается без изменений) ...
-// Получить все типы
-exports.getAllTypes = async (req, res) => {
+// --- Вспомогательная функция для инвалидации кеша ---
+const clearCacheKeys = async (keys) => {
+    if (!keys || keys.length === 0) return;
     try {
-        const types = await SiteType.findAll({ order: [['id', 'ASC']] });
-        res.json(types);
+        // Проверяем статус клиента перед удалением
+        if (redisClient.status !== 'ready') {
+             console.warn(`Redis не готов (статус: ${redisClient.status}), пропуск инвалидации кеша для ключей: ${keys.join(', ')}`);
+             return;
+        }
+        const result = await redisClient.del(keys);
+        console.log(`Cache invalidated for keys: ${keys.join(', ')}. Result: ${result}`);
     } catch (err) {
-        console.error('Ошибка получения типов:', err);
-        res.status(500).json({ message: 'Ошибка сервера при получении типов' });
+        console.error(`Redis: Не удалось инвалидировать кеш для ключей ${keys.join(', ')}:`, err.message || err);
+        // Не прерываем основной процесс из-за ошибки инвалидации, но логируем
+        if (err instanceof redisClient.RedisError) {
+             console.error('Redis: Специфическая ошибка Redis во время инвалидации.');
+        }
     }
 };
 
-// Создать новый тип
+
+// --- Управление SiteType (Типы ОАН) ---
+
+// Получить все типы для админки (с кешированием)
+exports.getAllTypes = async (req, res) => {
+    try {
+        let cachedData = null;
+        // Проверяем статус Redis перед GET
+        if (redisClient.status === 'ready') {
+            cachedData = await redisClient.get(CACHE_KEY_ADMIN_TYPES);
+        } else {
+             console.warn('Redis не готов, получаем типы напрямую из БД.');
+        }
+
+        if (cachedData) {
+            console.log('Admin Types: Cache hit');
+            res.json(JSON.parse(cachedData));
+            return;
+        }
+
+        console.log('Admin Types: Cache miss или Redis недоступен, получаем из БД');
+        const types = await SiteType.findAll({ order: [['id', 'ASC']] });
+
+        // Сохраняем в кеш, только если Redis готов
+        if (redisClient.status === 'ready') {
+            try {
+                await redisClient.setex(CACHE_KEY_ADMIN_TYPES, CACHE_TTL_ADMIN_LISTS, JSON.stringify(types));
+                console.log(`Admin Types: Saved to cache with TTL ${CACHE_TTL_ADMIN_LISTS}s`);
+            } catch (cacheErr) {
+                 console.error('Redis: Не удалось сохранить Admin Types в кеш:', cacheErr.message);
+            }
+        }
+        res.json(types);
+    } catch (err) {
+        console.error('Ошибка получения типов (Admin):', err);
+        // Не отправляем детали ошибки Redis клиенту
+        if (err instanceof redisClient.RedisError) {
+             res.status(500).json({ message: 'Ошибка сервера (проблема с кешем)' });
+        } else {
+            res.status(500).json({ message: 'Ошибка сервера при получении типов' });
+        }
+    }
+};
+
+// Создать новый тип (с инвалидацией кеша)
 exports.createType = async (req, res) => {
     const { type_value, label } = req.body;
     if (!type_value || !label) {
@@ -38,10 +96,11 @@ exports.createType = async (req, res) => {
     }
     try {
         const newType = await SiteType.create({ type_value, label });
+        // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_TYPES, CACHE_KEY_FILTERS]);
         res.status(201).json(newType);
     } catch (err) {
         console.error('Ошибка создания типа:', err);
-         // Проверка на уникальность type_value
         if (err.name === 'SequelizeUniqueConstraintError') {
              return res.status(400).json({ message: `Тип со значением '${type_value}' уже существует.` });
         }
@@ -49,7 +108,7 @@ exports.createType = async (req, res) => {
     }
 };
 
-// Обновить существующий тип
+// Обновить существующий тип (с инвалидацией кеша)
 exports.updateType = async (req, res) => {
     const { id } = req.params;
     const { type_value, label } = req.body;
@@ -72,17 +131,19 @@ exports.updateType = async (req, res) => {
         type.type_value = type_value;
         type.label = label;
         await type.save();
+        // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_TYPES, CACHE_KEY_FILTERS]);
         res.json(type);
     } catch (err) {
         console.error('Ошибка обновления типа:', err);
-        if (err.name === 'SequelizeUniqueConstraintError') { // На случай, если проверка выше не сработает (хотя должна)
+        if (err.name === 'SequelizeUniqueConstraintError') { // На случай, если проверка выше не сработает
              return res.status(400).json({ message: `Тип со значением '${type_value}' уже существует.` });
         }
         res.status(500).json({ message: 'Ошибка сервера при обновлении типа' });
     }
 };
 
-// Удалить тип
+// Удалить тип (с инвалидацией кеша)
 exports.deleteType = async (req, res) => {
     const { id } = req.params;
     try {
@@ -98,6 +159,8 @@ exports.deleteType = async (req, res) => {
         }
 
         await type.destroy();
+        // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_TYPES, CACHE_KEY_FILTERS]);
         res.json({ message: 'Тип успешно удален' });
     } catch (err) {
         console.error('Ошибка удаления типа:', err);
@@ -107,19 +170,46 @@ exports.deleteType = async (req, res) => {
 
 
 // --- Управление SiteEpoch (Эпохи) ---
-// ... (код для эпох остается без изменений) ...
-// Получить все эпохи
+
+// Получить все эпохи (с кешированием)
 exports.getAllEpochs = async (req, res) => {
-    try {
+     try {
+        let cachedData = null;
+        if (redisClient.status === 'ready') {
+             cachedData = await redisClient.get(CACHE_KEY_ADMIN_EPOCHS);
+         } else {
+             console.warn('Redis не готов, получаем эпохи напрямую из БД.');
+         }
+
+        if (cachedData) {
+            console.log('Admin Epochs: Cache hit');
+            res.json(JSON.parse(cachedData));
+            return;
+        }
+
+        console.log('Admin Epochs: Cache miss или Redis недоступен, получаем из БД');
         const epochs = await SiteEpoch.findAll({ order: [['id', 'ASC']] });
+
+        if (redisClient.status === 'ready') {
+            try {
+                await redisClient.setex(CACHE_KEY_ADMIN_EPOCHS, CACHE_TTL_ADMIN_LISTS, JSON.stringify(epochs));
+                console.log(`Admin Epochs: Saved to cache with TTL ${CACHE_TTL_ADMIN_LISTS}s`);
+            } catch (cacheErr) {
+                console.error('Redis: Не удалось сохранить Admin Epochs в кеш:', cacheErr.message);
+            }
+        }
         res.json(epochs);
     } catch (err) {
-        console.error('Ошибка получения эпох:', err);
-        res.status(500).json({ message: 'Ошибка сервера при получении эпох' });
+        console.error('Ошибка получения эпох (Admin):', err);
+         if (err instanceof redisClient.RedisError) {
+              res.status(500).json({ message: 'Ошибка сервера (проблема с кешем)' });
+         } else {
+            res.status(500).json({ message: 'Ошибка сервера при получении эпох' });
+         }
     }
 };
 
-// Создать новую эпоху
+// Создать новую эпоху (с инвалидацией кеша)
 exports.createEpoch = async (req, res) => {
     const { epoch_value, label } = req.body;
     if (!epoch_value || !label) {
@@ -127,9 +217,11 @@ exports.createEpoch = async (req, res) => {
     }
     try {
         const newEpoch = await SiteEpoch.create({ epoch_value, label });
+        // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_EPOCHS, CACHE_KEY_FILTERS]);
         res.status(201).json(newEpoch);
     } catch (err) {
-        console.error('Ошибка создания эпохи:', err);
+         console.error('Ошибка создания эпохи:', err);
         if (err.name === 'SequelizeUniqueConstraintError') {
              return res.status(400).json({ message: `Эпоха со значением '${epoch_value}' уже существует.` });
         }
@@ -137,11 +229,11 @@ exports.createEpoch = async (req, res) => {
     }
 };
 
-// Обновить существующую эпоху
+// Обновить существующую эпоху (с инвалидацией кеша)
 exports.updateEpoch = async (req, res) => {
-    const { id } = req.params;
-    const { epoch_value, label } = req.body;
-    if (!epoch_value || !label) {
+     const { id } = req.params;
+     const { epoch_value, label } = req.body;
+     if (!epoch_value || !label) {
         return res.status(400).json({ message: 'Поля epoch_value и label обязательны' });
     }
     try {
@@ -160,6 +252,8 @@ exports.updateEpoch = async (req, res) => {
         epoch.epoch_value = epoch_value;
         epoch.label = label;
         await epoch.save();
+         // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_EPOCHS, CACHE_KEY_FILTERS]);
         res.json(epoch);
     } catch (err) {
         console.error('Ошибка обновления эпохи:', err);
@@ -170,7 +264,7 @@ exports.updateEpoch = async (req, res) => {
     }
 };
 
-// Удалить эпоху
+// Удалить эпоху (с инвалидацией кеша)
 exports.deleteEpoch = async (req, res) => {
     const { id } = req.params;
     try {
@@ -186,6 +280,8 @@ exports.deleteEpoch = async (req, res) => {
         }
 
         await epoch.destroy();
+         // Инвалидация кеша
+        await clearCacheKeys([CACHE_KEY_ADMIN_EPOCHS, CACHE_KEY_FILTERS]);
         res.json({ message: 'Эпоха успешно удалена' });
     } catch (err) {
         console.error('Ошибка удаления эпохи:', err);
@@ -196,8 +292,8 @@ exports.deleteEpoch = async (req, res) => {
 // --- Управление Point (Точки) ---
 
 /**
- * Получить все точки для админки с пагинацией.
- * Принимает query параметры `page` (номер страницы, начиная с 1) и `limit` (размер страницы).
+ * Получить все точки для админки с пагинацией. (НЕ кешируется)
+ * Принимает query параметры `page` и `limit`.
  */
 exports.getAllPoints = async (req, res) => {
     // Получаем параметры пагинации из запроса (query string)
@@ -209,6 +305,7 @@ exports.getAllPoints = async (req, res) => {
         const data = await Point.findAndCountAll({
             attributes: [
                 'id', 'name', 'short_description',
+                // Используем функции PostGIS для извлечения координат, указывая таблицу для geom
                 [sequelize.fn('ST_X', sequelize.col('Point.geom')), 'longitude'],
                 [sequelize.fn('ST_Y', sequelize.col('Point.geom')), 'latitude'],
                 'created_at', 'updated_at'
@@ -234,8 +331,7 @@ exports.getAllPoints = async (req, res) => {
     }
 };
 
-// --- (Остальные методы для Point: createPoint, updatePoint, deletePoint без изменений) ---
-// Создать новую точку
+// Создать новую точку (инвалидация кеша для этой точки не нужна)
 exports.createPoint = async (req, res) => {
     const {
         name, short_description, description,
@@ -244,7 +340,7 @@ exports.createPoint = async (req, res) => {
     } = req.body;
 
     // Валидация
-    if (!name || !latitude || !longitude || !type_id || !epoch_id) {
+    if (name === undefined || latitude === undefined || longitude === undefined || type_id === undefined || epoch_id === undefined) {
         return res.status(400).json({ message: 'Поля name, latitude, longitude, type_id, epoch_id обязательны' });
     }
     if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
@@ -256,14 +352,15 @@ exports.createPoint = async (req, res) => {
             name,
             short_description,
             description,
-            geom: sequelize.fn('ST_SetSRID', sequelize.fn('ST_MakePoint', parseFloat(longitude), parseFloat(latitude)), 4326), // Создаем геометрию
+            // Создаем геометрию с помощью функций PostGIS
+            geom: sequelize.fn('ST_SetSRID', sequelize.fn('ST_MakePoint', parseFloat(longitude), parseFloat(latitude)), 4326),
             type_id: parseInt(type_id, 10),
             epoch_id: parseInt(epoch_id, 10),
             admin_division_id: admin_division_id ? parseInt(admin_division_id, 10) : null // Может быть null
         });
-        // После создания возвращаем не просто newPoint, а данные с join'ами, как при обновлении
-        // или можно просто вернуть ID и сообщение об успехе, а фронтенд перезагрузит список
-         const createdPointDetails = await Point.findByPk(newPoint.id, {
+
+        // После создания возвращаем данные с join'ами
+        const createdPointDetails = await Point.findByPk(newPoint.id, {
              attributes: [
                 'id', 'name', 'short_description', 'description',
                 [sequelize.fn('ST_X', sequelize.col('Point.geom')), 'longitude'],
@@ -276,6 +373,8 @@ exports.createPoint = async (req, res) => {
                 { model: AdminArea, as: 'admin_division', attributes: ['id', 'name'] }
             ]
         });
+        // Примечание: Инвалидировать кеш для списка /admin/points не требуется, т.к. мы его не кешируем.
+        // Кеш для конкретной точки /points/:id еще не существует.
         res.status(201).json(createdPointDetails); // Возвращаем созданную точку с деталями
     } catch (err) {
         console.error('Ошибка создания точки:', err);
@@ -283,7 +382,7 @@ exports.createPoint = async (req, res) => {
     }
 };
 
-// Обновить существующую точку
+// Обновить существующую точку (с инвалидацией кеша этой точки)
 exports.updatePoint = async (req, res) => {
     const { id } = req.params;
     const {
@@ -293,7 +392,7 @@ exports.updatePoint = async (req, res) => {
     } = req.body;
 
      // Валидация
-    if (!name || !latitude || !longitude || !type_id || !epoch_id) {
+    if (name === undefined || latitude === undefined || longitude === undefined || type_id === undefined || epoch_id === undefined) {
         return res.status(400).json({ message: 'Поля name, latitude, longitude, type_id, epoch_id обязательны' });
     }
      if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
@@ -317,6 +416,9 @@ exports.updatePoint = async (req, res) => {
 
         await point.save(); // Sequelize автоматически обновит updated_at
 
+        // Инвалидация кеша для этой конкретной точки
+        await clearCacheKeys([`${CACHE_PREFIX_POINT}${id}`]);
+
         // Получаем обновленную точку с присоединенными данными для ответа
         const updatedPoint = await Point.findByPk(id, {
              attributes: [
@@ -332,7 +434,6 @@ exports.updatePoint = async (req, res) => {
             ]
         });
 
-
         res.json(updatedPoint);
     } catch (err) {
         console.error('Ошибка обновления точки:', err);
@@ -340,7 +441,7 @@ exports.updatePoint = async (req, res) => {
     }
 };
 
-// Удалить точку
+// Удалить точку (с инвалидацией кеша этой точки)
 exports.deletePoint = async (req, res) => {
     const { id } = req.params;
     try {
@@ -350,6 +451,8 @@ exports.deletePoint = async (req, res) => {
         }
 
         await point.destroy();
+        // Инвалидация кеша для этой конкретной точки
+        await clearCacheKeys([`${CACHE_PREFIX_POINT}${id}`]);
         res.json({ message: 'Точка успешно удалена' });
     } catch (err) {
         console.error('Ошибка удаления точки:', err);
@@ -359,17 +462,43 @@ exports.deletePoint = async (req, res) => {
 
 
 // --- Вспомогательные данные ---
-// Получить список административных районов (для выпадающего списка)
+// Получить список административных районов (с кешированием)
 exports.getAdminDivisions = async (req, res) => {
     try {
+         let cachedData = null;
+         if (redisClient.status === 'ready') {
+            cachedData = await redisClient.get(CACHE_KEY_ADMIN_DIVISIONS);
+         } else {
+            console.warn('Redis не готов, получаем адм. районы напрямую из БД.');
+         }
+
+        if (cachedData) {
+            console.log('Admin Divisions: Cache hit');
+            res.json(JSON.parse(cachedData));
+            return;
+        }
+         console.log('Admin Divisions: Cache miss или Redis недоступен, получаем из БД');
         // Получаем только id и name, сортируем по имени
         const divisions = await AdminArea.findAll({
             attributes: ['id', 'name'], // Используем поле 'name' (русское название)
             order: [['name', 'ASC']]
         });
+
+        if (redisClient.status === 'ready') {
+            try {
+                await redisClient.setex(CACHE_KEY_ADMIN_DIVISIONS, CACHE_TTL_ADMIN_LISTS, JSON.stringify(divisions));
+                console.log(`Admin Divisions: Saved to cache with TTL ${CACHE_TTL_ADMIN_LISTS}s`);
+            } catch (cacheErr) {
+                console.error('Redis: Не удалось сохранить Admin Divisions в кеш:', cacheErr.message);
+            }
+        }
         res.json(divisions);
     } catch (err) {
-        console.error('Ошибка получения адм. районов:', err);
-        res.status(500).json({ message: 'Ошибка сервера при получении адм. районов' });
+        console.error('Ошибка получения адм. районов (Admin):', err);
+        if (err instanceof redisClient.RedisError) {
+              res.status(500).json({ message: 'Ошибка сервера (проблема с кешем)' });
+        } else {
+             res.status(500).json({ message: 'Ошибка сервера при получении адм. районов' });
+        }
     }
 };
