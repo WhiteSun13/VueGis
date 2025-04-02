@@ -8,9 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 // Создаем экземпляр Axios с базовой конфигурацией
 const apiClient = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { },
 });
 
 // Добавляем интерцептор запросов
@@ -85,7 +83,13 @@ export const fetchFilters = () => {
 
 // Получить детальную информацию о точке по ID
 export const fetchPointInfo = (id) => {
-    return apiClient.get(`/points/${id}`); // Используем apiClient
+    return apiClient.get(`/points/${id}`);
+};
+
+// Скачивание файла
+export const getDocumentDownloadUrl = (documentId) => {
+    // Возвращаем URL, а не делаем запрос через axios, т.к. это для <a> тега или window.open
+    return `${API_URL}/documents/${documentId}/download`;
 };
 
 // Проверить местоположение по координатам
@@ -117,80 +121,62 @@ export const fetchAdminAreas = (bbox) => {
 // --- Функции для аутентификации ---
 
 // Вход администратора
-export const loginAdmin = (credentials) => {
-    return apiClient.post('/auth/login', credentials);
-};
+export const loginAdmin = (credentials) => apiClient.post('/auth/login', credentials, { headers: { 'Content-Type': 'application/json' } });
 
 // --- Функции админки (требуют токен, обрабатываются интерцептором) ---
 
 // Проверка статуса аутентификации
-export const checkAuthStatus = () => {
-    return apiClient.get('/admin/check-auth');
-};
+export const checkAuthStatus = () => apiClient.get('/admin/check-auth');
 
 // --- CRUD для SiteType (Типы ОАН) ---
-export const getAllTypesAdmin = () => {
-    return apiClient.get('/admin/types');
-};
-export const createTypeAdmin = (typeData) => {
-    return apiClient.post('/admin/types', typeData);
-};
-export const updateTypeAdmin = (id, typeData) => {
-    return apiClient.put(`/admin/types/${id}`, typeData);
-};
-export const deleteTypeAdmin = (id) => {
-    return apiClient.delete(`/admin/types/${id}`);
-};
+export const getAllTypesAdmin = () => apiClient.get('/admin/types');
+export const createTypeAdmin = (typeData) => apiClient.post('/admin/types', typeData, { headers: { 'Content-Type': 'application/json' } });
+export const updateTypeAdmin = (id, typeData) => apiClient.put(`/admin/types/${id}`, typeData, { headers: { 'Content-Type': 'application/json' } });
+export const deleteTypeAdmin = (id) => apiClient.delete(`/admin/types/${id}`);
 
 // --- CRUD для SiteEpoch (Эпохи) ---
-export const getAllEpochsAdmin = () => {
-    return apiClient.get('/admin/epochs');
-};
-export const createEpochAdmin = (epochData) => {
-    return apiClient.post('/admin/epochs', epochData);
-};
-export const updateEpochAdmin = (id, epochData) => {
-    return apiClient.put(`/admin/epochs/${id}`, epochData);
-};
-export const deleteEpochAdmin = (id) => {
-    return apiClient.delete(`/admin/epochs/${id}`);
-};
+export const getAllEpochsAdmin = () => apiClient.get('/admin/epochs');
+export const createEpochAdmin = (epochData) => apiClient.post('/admin/epochs', epochData, { headers: { 'Content-Type': 'application/json' } });
+export const updateEpochAdmin = (id, epochData) => apiClient.put(`/admin/epochs/${id}`, epochData, { headers: { 'Content-Type': 'application/json' } });
+export const deleteEpochAdmin = (id) => apiClient.delete(`/admin/epochs/${id}`);
 
-// --- CRUD для Point (Точки) ---
+// --- CRUD для Point ---
+export const getAllPointsAdmin = (page = 1, limit = 10) => apiClient.get('/admin/points', { params: { page, limit } });
+export const createPointAdmin = (pointData) => apiClient.post('/admin/points', pointData, { headers: { 'Content-Type': 'application/json' } });
+// Обновляем updatePointAdmin, чтобы он тоже отправлял JSON
+export const updatePointAdmin = (id, pointData) => apiClient.put(`/admin/points/${id}`, pointData, { headers: { 'Content-Type': 'application/json' } });
+export const deletePointAdmin = (id) => apiClient.delete(`/admin/points/${id}`);
+
+// --- CRUD для Document ---
 /**
- * Получает список точек для админки с параметрами пагинации.
- * @param {number} page Номер страницы (начиная с 1)
- * @param {number} limit Количество элементов на странице
- * @returns {Promise} Promise с ответом API, содержащим { totalItems, items, totalPages, currentPage }
+ * Загружает PDF документ.
+ * @param {FormData} formData - Объект FormData, содержащий файл ('document') и опциональное описание ('description').
+ * @returns {Promise} Promise с ответом API.
  */
-export const getAllPointsAdmin = (page = 1, limit = 10) => {
-    // Передаем параметры пагинации как query params
-    return apiClient.get('/admin/points', {
-        params: {
-            page: page,
-            limit: limit
-        }
-    });
+export const uploadDocumentAdmin = (formData) => {
+    // Для FormData Axios сам установит правильный Content-Type (multipart/form-data)
+    return apiClient.post('/admin/documents', formData);
 };
 
-// Для получения точки для редактирования используем публичный fetchPointInfo,
-// т.к. он возвращает все нужные данные и не требует доп. маршрута
-// export const getPointAdmin = (id) => apiClient.get(`/admin/points/${id}`); // Не используется
-
-export const createPointAdmin = (pointData) => {
-    return apiClient.post('/admin/points', pointData);
-};
-export const updatePointAdmin = (id, pointData) => {
-    return apiClient.put(`/admin/points/${id}`, pointData);
-};
-export const deletePointAdmin = (id) => {
-    return apiClient.delete(`/admin/points/${id}`);
+/**
+ * Получает список всех документов для админки.
+ * @returns {Promise} Promise с массивом документов.
+ */
+export const getAllDocumentsAdmin = () => {
+    return apiClient.get('/admin/documents');
 };
 
-// --- Получение адм. районов для форм ---
-export const getAdminDivisionsForSelect = () => {
-    return apiClient.get('/admin/admin-divisions');
+/**
+ * Удаляет документ по ID.
+ * @param {number} id ID документа.
+ * @returns {Promise} Promise с ответом API.
+ */
+export const deleteDocumentAdmin = (id) => {
+    return apiClient.delete(`/admin/documents/${id}`);
 };
 
-// Экспортируем сам клиент, если он нужен где-то еще (хотя обычно используют функции)
+// --- Получение адм. районов для форм (без изменений) ---
+export const getAdminDivisionsForSelect = () => apiClient.get('/admin/admin-divisions');
+
+// Экспортируем сам клиент (без изменений)
 export default apiClient;

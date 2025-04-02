@@ -1,4 +1,3 @@
-// backend/app/routes/index.js
 const express = require('express');
 const router = express.Router();
 
@@ -8,10 +7,10 @@ const dataRoutes = require('./data');
 const adminAreasRoutes = require('./adminAreas');
 const checkLocationRoutes = require('./checkLocation');
 const filtersRoutes = require('./filters');
-
-// Импорт новых маршрутов
-const authRoutes = require('./auth'); // Маршруты аутентификации
-const adminRoutes = require('./admin'); // Защищенные маршруты админа
+const authRoutes = require('./auth');
+const adminRoutes = require('./admin');
+// Импорт нового маршрута для документов
+const documentsRoutes = require('./documents'); // <--- Новый импорт
 
 // Подключение существующих маршрутов
 router.use('/points', pointsRoutes);
@@ -19,9 +18,9 @@ router.use('/data', dataRoutes);
 router.use('/filters', filtersRoutes);
 router.use('/adminAreas', adminAreasRoutes);
 router.use('/check-location', checkLocationRoutes);
-
-// Подключение новых маршрутов
-router.use('/auth', authRoutes); // Маршруты для входа (/api/auth/login)
-router.use('/admin', adminRoutes); // Защищенные маршруты админа (/api/admin/...)
+router.use('/auth', authRoutes);
+router.use('/admin', adminRoutes);
+// Подключение нового маршрута для публичного доступа к документам
+router.use('/documents', documentsRoutes); // <--- Новый маршрут
 
 module.exports = router;

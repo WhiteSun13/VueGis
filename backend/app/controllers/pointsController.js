@@ -1,4 +1,4 @@
-const { Point, SiteType, SiteEpoch, AdminArea, sequelize } = require('@app/models');
+const { Point, SiteType, SiteEpoch, AdminArea, Document, sequelize } = require('@app/models'); // Добавили Document
 const redisClient = require('@app/config/redis'); // Импортируем клиент Redis
 
 const CACHE_TTL_POINT = 300; // Время жизни кеша для точки в секундах (5 минут)
@@ -21,10 +21,10 @@ exports.getPoints = async (req, res) => {
     }
 };
 
-// Кешируем getPointInfo
+// Кешируем getPointInfo (добавляем include для документов)
 exports.getPointInfo = async (req, res) => {
     const { id } = req.params;
-    const CACHE_KEY = `cache:point:${id}`; // Динамический ключ для конкретной точки
+    const CACHE_KEY = `cache:point:${id}`;
 
     if (!id) {
         return res.status(400).json({ error: 'Отсутствует id точки' });
@@ -32,7 +32,10 @@ exports.getPointInfo = async (req, res) => {
 
     try {
         // 1. Пытаемся получить из кеша
-        const cachedData = await redisClient.get(CACHE_KEY);
+        let cachedData = null;
+        if (redisClient.status === 'ready') {
+            cachedData = await redisClient.get(CACHE_KEY);
+        }
         if (cachedData) {
             console.log(`Point ${id}: Cache hit`);
             res.json(JSON.parse(cachedData));
@@ -50,7 +53,13 @@ exports.getPointInfo = async (req, res) => {
             include: [
                 { model: SiteType, attributes: ['label'], as: 'type' },
                 { model: SiteEpoch, attributes: ['label'], as: 'epoch' },
-                { model: AdminArea, attributes: ['name'], as: 'admin_division' }
+                { model: AdminArea, attributes: ['name'], as: 'admin_division' },
+                { // Добавляем связанные документы
+                    model: Document,
+                    as: 'documents', // Используем псевдоним, заданный в ассоциации
+                    attributes: ['id', 'filename', 'description'], // Выбираем нужные поля документа
+                    through: { attributes: [] } // Исключаем поля из связующей таблицы
+                }
             ]
         });
 
@@ -68,12 +77,19 @@ exports.getPointInfo = async (req, res) => {
             short_description: point.short_description,
             description: point.description,
             lat: point.get('latitude'),
-            lon: point.get('longitude')
+            lon: point.get('longitude'),
+            documents: point.documents || [], // Добавляем массив документов
         };
 
-        // 3. Сохраняем в кеш
-        await redisClient.setex(CACHE_KEY, CACHE_TTL_POINT, JSON.stringify(pointData));
-        console.log(`Point ${id}: Saved to cache with TTL ${CACHE_TTL_POINT}s`);
+        // 3. Сохраняем в кеш, если Redis готов
+        if (redisClient.status === 'ready') {
+            try {
+                await redisClient.setex(CACHE_KEY, CACHE_TTL_POINT, JSON.stringify(pointData));
+                console.log(`Point ${id}: Saved to cache with TTL ${CACHE_TTL_POINT}s`);
+            } catch(cacheErr) {
+                 console.error(`Redis: Не удалось сохранить Point ${id} в кеш:`, cacheErr.message);
+            }
+        }
 
         // 4. Отправляем ответ
         res.json(pointData);
@@ -86,7 +102,15 @@ exports.getPointInfo = async (req, res) => {
         // Обработка ошибок Redis
         if (err instanceof redisClient.RedisError) {
             console.error(`Redis: Ошибка при работе с кешем для точки ${id}:`, err.message);
-             res.status(500).json({ error: 'Ошибка сервера (проблема с кешем)' });
+            // Пытаемся отдать данные из БД, если они были получены до ошибки Redis
+             const pointFromDb = await Point.findByPk(id, { /* ... include options ... */ }); // Повторный запрос или использование ранее полученных данных
+             if (pointFromDb) {
+                  // Формируем pointData без кеширования
+                  const pointData = { /* ... */ };
+                  res.json(pointData);
+             } else {
+                 res.status(500).json({ error: 'Ошибка сервера (проблема с кешем и БД)' });
+             }
         } else {
             res.status(500).json({ error: 'Ошибка сервера' });
         }

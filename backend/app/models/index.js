@@ -4,29 +4,36 @@ const AdminArea = require('./AdminArea');
 const Settlement = require('./Settlement');
 const SiteType = require('./SiteType');
 const SiteEpoch = require('./SiteEpoch');
+// Импортируем новые модели
+const Document = require('./Document');
+const PointDocument = require('./PointDocument');
 
-// Настройка ассоциаций
-Point.belongsTo(SiteType, {
-  foreignKey: 'type_id', // Ключ в модели Point
-  as: 'type'           // Псевдоним для доступа к связанной модели SiteType
+// --- Ассоциации для Point ---
+Point.belongsTo(SiteType, { foreignKey: 'type_id', as: 'type' });
+Point.belongsTo(SiteEpoch, { foreignKey: 'epoch_id', as: 'epoch' });
+Point.belongsTo(AdminArea, { foreignKey: 'admin_division_id', as: 'admin_division' });
+
+// --- Ассоциации для Document ---
+// Многие-ко-многим: Point <-> Document через PointDocument
+Point.belongsToMany(Document, {
+  through: PointDocument,       // Связующая таблица/модель
+  foreignKey: 'point_id',     // Внешний ключ в связующей таблице, указывающий на Point
+  otherKey: 'document_id',    // Внешний ключ в связующей таблице, указывающий на Document
+  as: 'documents',            // Псевдоним для доступа к связанным документам из Point
+  // timestamps: false // Не нужно здесь, т.к. в PointDocument уже false
 });
 
-Point.belongsTo(SiteEpoch, {
-  foreignKey: 'epoch_id', // Ключ в модели Point
-  as: 'epoch'          // Псевдоним для доступа к связанной модели SiteEpoch
+Document.belongsToMany(Point, {
+  through: PointDocument,       // Связующая таблица/модель
+  foreignKey: 'document_id',    // Внешний ключ в связующей таблице, указывающий на Document
+  otherKey: 'point_id',       // Внешний ключ в связующей таблице, указывающий на Point
+  as: 'points',               // Псевдоним для доступа к связанным точкам из Document (если понадобится)
+  // timestamps: false
 });
 
-Point.belongsTo(AdminArea, {
-  foreignKey: 'admin_division_id', // Ключ в модели Point
-  as: 'admin_division'           // Псевдоним для доступа к связанной модели AdminArea
-});
-
-// Обратные ассоциации (HasMany)
-// Один SiteType может быть связан с многими Point
+// --- Обратные ассоциации (HasMany) ---
 SiteType.hasMany(Point, { foreignKey: 'type_id' });
-// Один SiteEpoch может быть связан с многими Point
 SiteEpoch.hasMany(Point, { foreignKey: 'epoch_id' });
-// Один AdminArea может быть связан с многими Point
 AdminArea.hasMany(Point, { foreignKey: 'admin_division_id' });
 
 // Экспорт sequelize instance и всех моделей
@@ -36,5 +43,7 @@ module.exports = {
   AdminArea,
   Settlement,
   SiteType,
-  SiteEpoch
+  SiteEpoch,
+  Document,       // Экспортируем Document
+  PointDocument,  // Экспортируем PointDocument (хотя обычно используется только для through)
 };
