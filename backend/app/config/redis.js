@@ -1,5 +1,4 @@
 const Redis = require('ioredis');
-require('dotenv').config(); // Убедимся, что переменные окружения загружены
 
 // Получаем хост и порт из переменных окружения
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'; // Фоллбэк для локального запуска без Docker
