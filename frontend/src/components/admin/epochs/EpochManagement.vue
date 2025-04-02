@@ -25,7 +25,7 @@ import { ref, onMounted, h, watch } from 'vue';
 import {
     NSpin, NDataTable, NEmpty, NButton, NSpace, useMessage, useDialog
 } from 'naive-ui';
-import ManagementSection from './ManagementSection.vue';
+import ManagementSection from '@/components/admin/ManagementSection.vue';
 import EpochFormModal from './EpochFormModal.vue';
 // Импортируем функции API
 import {

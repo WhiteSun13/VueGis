@@ -118,29 +118,27 @@ export const initModalMap = async (currentPoint, onCoordsUpdate, showMessage) =>
 
         mapClickEventHandler = handleMapClick; // Сохраняем ссылку на новую функцию
         placemarkDragEndEventHandler = (e) => {
-             const coords = mapPlacemark.geometry.getCoordinates();
-             handleMapClick({ get: (key) => (key === 'coords' ? coords : null) });
+            const coords = mapPlacemark.geometry.getCoordinates();
+            handleMapClick({ get: (key) => (key === 'coords' ? coords : null) });
         };
         searchResultSelectEventHandler = (e) => {
             const index = e.get('index');
             mapInstance.controls.get('searchControl').getResult(index).then((geoObject) => {
-                 const coords = geoObject.geometry.getCoordinates();
-                 mapInstance?.panTo(coords, { flying: true, duration: 500 });
-                 handleMapClick({ get: (key) => (key === 'coords' ? coords : null) });
-             });
+                const coords = geoObject.geometry.getCoordinates();
+                mapInstance?.panTo(coords, { flying: true, duration: 500 });
+                handleMapClick({ get: (key) => (key === 'coords' ? coords : null) });
+            });
         };
 
         mapInstance.events.add('click', mapClickEventHandler);
         mapPlacemark.events.add('dragend', placemarkDragEndEventHandler);
         // Добавляем обработчик searchControl после его инициализации
-        mapInstance.controls.ready.then(() => {
-             const searchControl = mapInstance.controls.get('searchControl');
-             if (searchControl) {
-                 searchControl.events.add('resultselect', searchResultSelectEventHandler);
-             } else {
-                 console.warn("SearchControl не найден после инициализации карты.");
-             }
-        });
+        const searchControl = mapInstance.controls.get('searchControl');
+        if (searchControl) {
+            searchControl.events.add('resultselect', searchResultSelectEventHandler);
+        } else {
+            console.warn("SearchControl не найден после инициализации карты.");
+        }
 
         console.log("Карта в модалке инициализирована.");
 
@@ -150,7 +148,7 @@ export const initModalMap = async (currentPoint, onCoordsUpdate, showMessage) =>
         showMapInModal.value = false;
         destroyModalMap();
     } finally {
-      isLoadingModalMap.value = false;
+        isLoadingModalMap.value = false;
     }
 };
 
@@ -159,18 +157,18 @@ export const initModalMap = async (currentPoint, onCoordsUpdate, showMessage) =>
 export const destroyModalMap = () => {
     try {
         if (mapInstance) {
-             if(mapClickEventHandler) mapInstance.events.remove('click', mapClickEventHandler);
-             try { // Обернем получение контрола в try-catch
+            if (mapClickEventHandler) mapInstance.events.remove('click', mapClickEventHandler);
+            try { // Обернем получение контрола в try-catch
                 const searchControl = mapInstance.controls.get('searchControl');
-                if(searchControl && searchResultSelectEventHandler) searchControl.events.remove('resultselect', searchResultSelectEventHandler);
-             } catch (controlError) {
+                if (searchControl && searchResultSelectEventHandler) searchControl.events.remove('resultselect', searchResultSelectEventHandler);
+            } catch (controlError) {
                 console.warn("Не удалось получить или удалить обработчик SearchControl:", controlError);
-             }
-             mapInstance.destroy();
+            }
+            mapInstance.destroy();
         }
-         if (mapPlacemark && placemarkDragEndEventHandler) {
+        if (mapPlacemark && placemarkDragEndEventHandler) {
             mapPlacemark.events.remove('dragend', placemarkDragEndEventHandler);
-         }
+        }
     } catch (e) {
         console.error("Ошибка при удалении обработчиков или уничтожении карты:", e);
     } finally {

@@ -36,7 +36,7 @@ import { ref, onMounted, computed, h } from 'vue';
 import {
     NSpin, NDataTable, NPagination, NEmpty, NButton, NSpace, useMessage, useDialog
 } from 'naive-ui';
-import ManagementSection from './ManagementSection.vue';
+import ManagementSection from '@/components/admin/ManagementSection.vue';
 import PointFormModal from './PointFormModal.vue';
 // Импортируем функции API
 import {

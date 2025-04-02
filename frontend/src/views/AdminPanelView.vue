@@ -75,9 +75,9 @@ import {
 } from '@/components/services/api';
 // Импортируем новые компоненты
 import AdminHeader from '@/components/admin/AdminHeader.vue';
-import PointManagement from '@/components/admin/PointManagement.vue';
-import TypeManagement from '@/components/admin/TypeManagement.vue';
-import EpochManagement from '@/components/admin/EpochManagement.vue';
+import PointManagement from '@/components/admin/points/PointManagement.vue';
+import TypeManagement from '@/components/admin/types/TypeManagement.vue';
+import EpochManagement from '@/components/admin/epochs/EpochManagement.vue';
 // Импортируем утилиту для загрузки API карт (если она нужна здесь)
 import { loadYmapsApi } from '@/components/admin/utils/mapUtils.js';
 

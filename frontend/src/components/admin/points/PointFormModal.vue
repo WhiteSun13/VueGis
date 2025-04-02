@@ -44,8 +44,7 @@
                         <div ref="modalMapContainer"
                             style="width: 100%; height: 300px; border: 1px solid #ccc; margin-top: 10px; position: relative;">
                             <!-- Спиннер для загрузки карты -->
-                            <n-spin :show="isLoadingModalMapState" description="Загрузка карты..." size="large"
-                                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.8); padding: 10px; border-radius: 4px; z-index: 1;" />
+                            <n-spin :show="isLoadingModalMapState" description="Загрузка карты..." size="large" />
                         </div>
                     </n-form-item-gi>
 
@@ -107,7 +106,7 @@ import {
 import {
     showMapInModal, modalMapContainerRef, isLoadingModalMap,
     loadYmapsApi, initModalMap, destroyModalMap, updatePlacemarkCoords
-} from './utils/mapUtils.js';
+} from '@/components/admin/utils/mapUtils.js';
 
 const message = useMessage();
 const props = defineProps({
