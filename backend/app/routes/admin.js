@@ -66,6 +66,11 @@ router.get('/documents', adminController.getAllDocuments);
 // @access  Private
 router.delete('/documents/:id', adminController.deleteDocument);
 
+// @route   PUT api/admin/documents/:id
+// @desc    Обновить описание документа
+// @access  Private
+router.put('/documents/:id', adminController.updateDocument); 
+
 // --- Маршруты для связей Point <-> Document ---
 // Связи теперь управляются через PUT /api/admin/points/:id (метод setDocuments)
 

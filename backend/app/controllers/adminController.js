@@ -665,6 +665,56 @@ exports.deleteDocument = async (req, res) => {
     }
 };
 
+/**
+ * Обновить описание документа.
+ */
+exports.updateDocument = async (req, res) => {
+    const { id } = req.params;
+    // Ожидаем описание в теле запроса
+    const { description } = req.body;
+
+    // Простая валидация: описание должно быть строкой или null
+    if (description !== undefined && typeof description !== 'string' && description !== null) {
+        return res.status(400).json({ message: 'Поле description должно быть строкой или null.' });
+    }
+
+    try {
+        const document = await Document.findByPk(id);
+        if (!document) {
+            return res.status(404).json({ message: 'Документ не найден' });
+        }
+
+        // Обновляем только описание
+        // Если пришло undefined, не меняем. Если пришло null, устанавливаем null.
+        if (description !== undefined) {
+            document.description = description; // Sequelize обработает null правильно
+        }
+        // Поле updated_at обновится автоматически благодаря timestamps: true
+
+        await document.save(); // Сохраняем изменения
+
+        // Инвалидируем кеш списка документов
+        await clearCacheKeys([CACHE_KEY_ADMIN_DOCUMENTS]);
+        // Также инвалидируем кеш точек, которые ссылаются на этот документ
+        // (более сложная задача, пока пропускаем или инвалидируем все точки)
+        const pointCacheKeys = (await document.getPoints({ attributes: ['id'] }))
+                                .map(p => `${CACHE_PREFIX_POINT}${p.id}`);
+        await clearCacheKeys(pointCacheKeys);
+
+
+        // Возвращаем обновленный документ
+        const updatedDocument = await Document.findByPk(id, {
+            attributes: ['id', 'filename', 'description', 'size', 'mimetype', 'created_at', 'updatedAt'] // Включаем updatedAt
+        });
+
+        res.json(updatedDocument);
+
+    } catch (err) {
+        console.error(`Ошибка обновления документа ${id}:`, err);
+        res.status(500).json({ message: 'Ошибка сервера при обновлении документа' });
+    }
+};
+
 // --- Вспомогательные данные ---
 // Получить список административных районов (с кешированием)
 exports.getAdminDivisions = async (req, res) => {
