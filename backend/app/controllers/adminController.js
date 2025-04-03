@@ -10,6 +10,7 @@ const CACHE_KEY_ADMIN_TYPES = 'cache:admin:types';
 const CACHE_KEY_ADMIN_EPOCHS = 'cache:admin:epochs';
 const CACHE_KEY_ADMIN_DIVISIONS = 'cache:admin:adminDivisions';
 const CACHE_KEY_FILTERS = 'cache:filters'; // Ключ для публичных фильтров
+const CACHE_KEY_ADMIN_DOCUMENTS = 'cache:admin:documents'; 
 const CACHE_PREFIX_POINT = 'cache:point:'; // Префикс для кеша отдельных точек
 
 // --- Вспомогательные функции пагинации ---
