@@ -1,7 +1,8 @@
-// backend/app/middleware/uploadMiddleware.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+// Импортируем библиотеку для транслитерации
+const CyrillicToTranslit = require('cyrillic-to-translit-js');
 
 // Получаем директорию для загрузок из переменной окружения или используем дефолтную
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads', 'pdfs');
@@ -28,13 +29,41 @@ const storage = multer.diskStorage({
   },
   // Как называть файлы
   filename: function (req, file, cb) {
-    // Генерируем уникальное имя: timestamp + случайное число + оригинальное расширение
+    // 1. Получаем оригинальное имя и расширение
+    const originalNameData = path.parse(file.originalname);
+    const originalBasename = originalNameData.name;
+    const originalExtension = originalNameData.ext; // Расширение с точкой (e.g., ".pdf")
+
+    // 2. Инициализируем транслитератор
+    // Важно: создаем новый экземпляр для каждого файла, т.к. он может иметь состояние
+    const cyrillicToTranslit = new CyrillicToTranslit();
+
+    // 3. Транслитерируем базовое имя файла (заменяем пробелы на '_')
+    let transliteratedName = cyrillicToTranslit.transform(originalBasename, "_");
+
+    // 4. Дополнительная очистка имени файла (опционально, но рекомендуется):
+    //    - Приводим к нижнему регистру
+    //    - Удаляем все символы, кроме букв (a-z), цифр, '_' и '-'
+    transliteratedName = transliteratedName
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, ''); // Оставляем только разрешенные символы
+
+    // 5. Предотвращаем пустое имя файла после очистки
+    if (!transliteratedName) {
+        transliteratedName = 'file'; // Имя по умолчанию, если оригинал состоял только из недопустимых символов
+    }
+
+    // 6. Генерируем уникальный префикс (как и раньше)
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+
+    // 7. Собираем финальное имя файла: uniquePrefix_transliteratedName.originalExtension
+    const finalFilename = uniqueSuffix + '_' + transliteratedName + originalExtension;
+
+    cb(null, finalFilename);
   }
 });
 
-// Фильтр файлов: принимаем только PDF
+// Фильтр файлов: принимаем только PDF (без изменений)
 const fileFilter = (req, file, cb) => {
   if (file.mimetype === 'application/pdf') {
     cb(null, true); // Принять файл
@@ -44,7 +73,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Создаем экземпляр multer с настройками
+// Создаем экземпляр multer с настройками (без изменений)
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,

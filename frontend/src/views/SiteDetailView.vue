@@ -46,7 +46,31 @@
                 </n-tooltip>
             </n-gi>
 
-            <!-- Ссылки на внешние ресурсы (без изменений) -->
+            <!-- Секция прикрепленных документов -->
+            <n-gi v-if="siteData.documents && siteData.documents.length > 0">
+                <n-divider class="section-divider" />
+                <n-h4 class="section-title">Документы</n-h4>
+                <n-list hoverable clickable>
+                    <n-list-item v-for="doc in siteData.documents" :key="doc.id">
+                         <template #prefix>
+                            <n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z"/></svg></n-icon>
+                         </template>
+                        <n-thing>
+                             <template #header>
+                                <!-- Используем getDocumentDownloadUrl для формирования ссылки -->
+                                <a :href="getDocumentDownloadUrl(doc.id)" target="_blank" rel="noopener noreferrer" class="document-link" :title="doc.description || 'Открыть документ'">
+                                    {{ doc.filename }}
+                                  </a>
+                            </template>
+                            <template #description v-if="doc.description">
+                                {{ doc.description }}
+                              </template>
+                        </n-thing>
+                      </n-list-item>
+                </n-list>
+            </n-gi>
+            
+            <!-- Ссылки на внешние ресурсы -->
              <n-gi>
                 <n-divider class="section-divider" />
                 <n-h4 class="section-title">Поиск дополнительной информации</n-h4>
@@ -58,30 +82,6 @@
                     <n-button tag="a" :href="getYandexSearchLink(siteData.name)" target="_blank" rel="noopener noreferrer" type="error">
                       <template #icon><n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M2.04 12c0-5.523 4.476-10 10-10 5.522 0 10 4.477 10 10s-4.478 10-10 10c-5.524 0-10-4.477-10-10z" /><path d="M13.32 7.666h-.924c-1.694 0-2.585.858-2.585 2.123 0 1.43.616 2.1 1.881 2.959l1.045.704-3.003 4.487H7.49l2.695-4.014c-1.55-1.111-2.42-2.19-2.42-4.015 0-2.288 1.595-3.85 4.62-3.85h3.003v11.868H13.32V7.666z" fill="#d03050" /></svg></n-icon></template>Яндекс</n-button>
                 </n-space>
-            </n-gi>
-
-             <!-- Секция прикрепленных документов -->
-            <n-gi v-if="siteData.documents && siteData.documents.length > 0">
-                <n-divider class="section-divider" />
-                <n-h4 class="section-title">Прикрепленные документы</n-h4>
-                <n-list hoverable clickable>
-                    <n-list-item v-for="doc in siteData.documents" :key="doc.id">
-                         <template #prefix>
-                            <n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z"/></svg></n-icon>
-                         </template>
-                        <n-thing>
-                             <template #header>
-                                <!-- Используем getDocumentDownloadUrl для формирования ссылки -->
-                                <a :href="getDocumentDownloadUrl(doc.id)" target="_blank" rel="noopener noreferrer" class="document-link" :title="doc.description || 'Открыть документ'">
-                                    {{ doc.filename }}
-                                </a>
-                            </template>
-                            <template #description v-if="doc.description">
-                                {{ doc.description }}
-                            </template>
-                        </n-thing>
-                    </n-list-item>
-                </n-list>
             </n-gi>
 
           </n-grid>

@@ -338,8 +338,8 @@ exports.createPoint = async (req, res) => {
     const {
         name, short_description, description,
         latitude, longitude, // Принимаем координаты как числа
-        type_id, epoch_id, admin_division_id
-        // document_ids // Пока не принимаем здесь, будем управлять через updatePoint
+        type_id, epoch_id, admin_division_id,
+        document_ids // Пока не принимаем здесь, будем управлять через updatePoint
     } = req.body;
 
     // Валидация
@@ -362,12 +362,12 @@ exports.createPoint = async (req, res) => {
         });
 
         // // Если бы принимали document_ids при создании:
-        // if (document_ids && Array.isArray(document_ids) && document_ids.length > 0) {
-        //      const validDocIds = document_ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-        //      if(validDocIds.length > 0) {
-        //         await newPoint.setDocuments(validDocIds); // Устанавливаем связи
-        //      }
-        // }
+        if (document_ids && Array.isArray(document_ids) && document_ids.length > 0) {
+             const validDocIds = document_ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+             if(validDocIds.length > 0) {
+                await newPoint.setDocuments(validDocIds); // Устанавливаем связи
+             }
+        }
 
         // После создания возвращаем данные с join'ами (включая пустой массив documents)
         const createdPointDetails = await Point.findByPk(newPoint.id, {

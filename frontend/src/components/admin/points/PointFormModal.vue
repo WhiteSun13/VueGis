@@ -65,7 +65,6 @@
 
                     <!-- Секция управления документами -->
                     <n-form-item-gi :span="2" label="Связанные документы:">
-                         <n-spin :show="isLoadingDocuments" description="Загрузка списка документов...">
                             <!-- Выпадающий список для выбора существующих документов -->
                              <n-select
                                 v-model:value="formData.document_ids"
@@ -76,18 +75,14 @@
                                 :loading="isLoadingDocuments"
                                 :disabled="isSaving || isLoadingData"
                                 clearable
-                                style="width: 100%;"
+                                style="min-width: 100%;"
                                 #empty
                             >
-                                Нет доступных документов. Загрузите их в соответствующем разделе.
+                                Нет доступных документов.
                             </n-select>
-                            <!-- Примечание: Загрузка новых файлов прямо здесь усложнит логику.
-                                 Рекомендуется создать отдельную секцию/вкладку для управления документами.
-                            -->
-                        </n-spin>
                     </n-form-item-gi>
 
-                     <!-- Список уже связанных документов (только если редактируем) -->
+                     <!-- Список уже связанных документов -->
                      <n-form-item-gi :span="2" v-if="formData.id && associatedDocuments.length > 0" label="Уже привязаны:">
                         <n-list bordered hoverable clickable style="width: 100%;">
                             <n-list-item v-for="doc in associatedDocuments" :key="doc.id">

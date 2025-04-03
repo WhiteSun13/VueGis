@@ -127,7 +127,8 @@ const openEditModal = async (pointId) => {
             epoch_id: props.epochs.find(e => e.label === data.epoch)?.id ?? null,
             // admin_division_id: props.adminDivisions.find(d => d.name === data.admin_division_name)?.id ?? null,
             short_description: data.short_description || '',
-            description: data.description || ''
+            description: data.description || '',
+            documents: data.documents
         };
     } catch (err) {
         console.error("Ошибка загрузки точки для редактирования:", err);

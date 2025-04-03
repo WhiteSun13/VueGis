@@ -21,6 +21,7 @@
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
+    "cyrillic-to-translit-js": "^3.2.1",
     "express": "^4.21.2",
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
