@@ -73,12 +73,12 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Создаем экземпляр multer с настройками (без изменений)
+// Создаем экземпляр multer с настройками
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 1024 * 1024 * 20 // Лимит 20MB
+    fileSize: 1024 * 1024 * 100 // Лимит 100MB
   }
 });
 

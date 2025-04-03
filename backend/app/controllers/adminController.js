@@ -704,7 +704,7 @@ exports.updateDocument = async (req, res) => {
 
         // Возвращаем обновленный документ
         const updatedDocument = await Document.findByPk(id, {
-            attributes: ['id', 'filename', 'description', 'size', 'mimetype', 'created_at', 'updatedAt'] // Включаем updatedAt
+            attributes: ['id', 'filename', 'description', 'size', 'mimetype', 'created_at', 'updated_at']
         });
 
         res.json(updatedDocument);

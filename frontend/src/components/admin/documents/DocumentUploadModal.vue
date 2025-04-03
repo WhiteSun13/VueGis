@@ -63,9 +63,11 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { NModal, NSpin, NForm, NFormItem, NInput, NUpload, NButton, NFlex, NAlert, useMessage } from 'naive-ui';
-import { uploadDocumentAdmin } from '@/components/services/api'; // Импортируем функцию API
+// Импортируем библиотеку транслитерации
+import CyrillicToTranslit from 'cyrillic-to-translit-js';
+import { uploadDocumentAdmin } from '@/components/services/api';
 
 const props = defineProps({
     show: { type: Boolean, required: true },
@@ -81,7 +83,7 @@ const uploadFormRef = ref(null); // Ссылка на форму
 const uploadComponentRef = ref(null); // Ссылка на компонент n-upload
 const formData = ref({
     description: '',
-    file: null, // Будем хранить файл здесь для FormData
+    file: null, // Здесь будет храниться объект File (возможно, с измененным именем)
 });
 const fileList = ref([]); // Для управления списком файлов в n-upload
 const isUploading = ref(false);
@@ -92,13 +94,26 @@ const uploadProgress = ref(0); // Прогресс загрузки (0-100)
 // Правило для проверки наличия файла
 const fileRule = {
     required: true,
-    trigger: ['change'], // Проверяем при изменении fileList
+    trigger: ['change'],
     validator(rule, value) {
         if (!fileList.value || fileList.value.length === 0) {
             return new Error('Необходимо выбрать PDF файл для загрузки');
         }
         return true;
     }
+};
+
+// --- Вспомогательная функция для разделения имени и расширения ---
+const getFilenameParts = (filename) => {
+    const lastDotIndex = filename.lastIndexOf('.');
+    // Если точки нет, или она первая (скрытый файл), считаем, что расширения нет
+    if (lastDotIndex === -1 || lastDotIndex === 0) {
+        return { name: filename, ext: '' };
+    }
+    return {
+        name: filename.substring(0, lastDotIndex),
+        ext: filename.substring(lastDotIndex) // Включает точку, например, ".pdf"
+    };
 };
 
 
@@ -111,63 +126,104 @@ const resetForm = () => {
     uploadError.value = null;
     isUploading.value = false;
     uploadProgress.value = 0;
-    // Сбрасываем валидацию формы
     uploadFormRef.value?.restoreValidation();
 };
 
-// Обработчик перед загрузкой (для n-upload)
-const handleBeforeUpload = async ({ file }) => {
-    if (file.file?.type !== 'application/pdf') {
+// Обработчик перед добавлением файла в список n-upload
+const handleBeforeUpload = ({ file }) => {
+    // file здесь - это объект n-upload со свойством .file (оригинальный File)
+    const originalFile = file.file;
+
+    // 1. Валидация типа и размера
+    if (originalFile?.type !== 'application/pdf') {
         message.error('Можно загружать только PDF файлы.');
-        return false; // Отклоняем загрузку
+        return false; // Отклоняем
     }
-    if (file.file?.size > 20 * 1024 * 1024) { // 20MB лимит (как в multer)
+    if (originalFile?.size > 20 * 1024 * 1024) { // 20MB
          message.error('Файл слишком большой. Максимальный размер: 20MB.');
          return false;
     }
-    // Если все ок, сохраняем файл для FormData
-    formData.value.file = file.file;
-    uploadError.value = null; // Сбрасываем ошибку при выборе нового файла
-    return true; // Разрешаем добавление в список (но не автозагрузку)
+
+    // 2. Транслитерация имени файла
+    const { name: originalBasename, ext: originalExtension } = getFilenameParts(originalFile.name);
+
+    const cyrillicToTranslit = new CyrillicToTranslit();
+    let transliteratedName = cyrillicToTranslit.transform(originalBasename, "_"); // Заменяем пробелы на '_'
+    transliteratedName = transliteratedName
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, ''); // Оставляем только латиницу, цифры, _ и -
+
+    if (!transliteratedName) { // Если имя стало пустым
+        transliteratedName = 'document'; // Имя по умолчанию
+    }
+
+    const newFilename = transliteratedName + originalExtension;
+
+    // 3. Создание нового объекта File с транслитерированным именем
+    let fileToProcess = originalFile;
+    if (newFilename !== originalFile.name) {
+        try {
+            // Создаем новый File с тем же содержимым, но новым именем
+            fileToProcess = new File([originalFile], newFilename, {
+                type: originalFile.type,
+                lastModified: originalFile.lastModified,
+            });
+            console.log(`Имя файла транслитерировано: "${originalFile.name}" -> "${newFilename}"`);
+             // ВАЖНО: Заменяем оригинальный файл в объекте события n-upload!
+             file.file = fileToProcess;
+             // Также нужно обновить имя в самом объекте `file`, который пойдет в `fileList`
+             file.name = newFilename;
+
+        } catch (e) {
+            console.error("Ошибка создания нового объекта File:", e);
+            message.error("Не удалось обработать имя файла.");
+            return false; // Отклоняем, если не удалось создать новый файл
+        }
+    }
+
+    // 4. Сохраняем (возможно, новый) файл в formData для последующей отправки
+    formData.value.file = fileToProcess;
+    uploadError.value = null; // Сбрасываем ошибку при успешном выборе
+
+    // 5. Разрешаем добавление файла в список n-upload (но не автозагрузку)
+    return true;
 };
 
-// Обработка изменения списка файлов (если пользователь удалил файл)
+
+// Обработка изменения списка файлов (например, удаление файла из списка)
 const handleFileChange = ({ fileList: newFileList }) => {
-    fileList.value = newFileList;
+    fileList.value = newFileList; // Обновляем fileList для n-upload
     if (newFileList.length === 0) {
-        formData.value.file = null; // Очищаем файл, если список пуст
+        formData.value.file = null; // Если список пуст, очищаем файл в formData
+    } else {
+        // Убедимся, что в formData актуальный файл (на случай, если файл был заменен)
+        formData.value.file = newFileList[0].file;
     }
-     // Принудительно проверяем валидность поля файла
-    uploadFormRef.value?.validate(
-        (errors) => {}, // callback при ошибках (не нужен здесь)
-        (rule) => rule?.path === 'file' // Проверять только правило для 'file'
-    );
+    // Принудительно перепроверяем валидность поля 'file'
+    uploadFormRef.value?.validate( (errors) => {}, (rule) => rule?.path === 'file');
 };
 
 // Кастомный запрос для n-upload (предотвращаем автозагрузку)
-const customUploadRequest = ({ file, onFinish, onError, onProgress }) => {
-    // Ничего не делаем здесь, т.к. загрузка будет по кнопке "Загрузить"
-    // onFinish(); // Вызываем onFinish(), чтобы файл остался в списке
-    console.log("customUploadRequest triggered, but upload happens on submit.");
-     // Важно: нужно вызвать onFinish, чтобы n-upload не считал файл "загружающимся"
-     // или "неудавшимся" по таймауту.
+const customUploadRequest = ({ onFinish }) => {
+    // Вызываем onFinish(), чтобы файл корректно отображался в списке как "готовый",
+    // а не "в процессе" или "ошибка". Реальная загрузка произойдет по кнопке.
      setTimeout(onFinish, 0);
 };
 
-// Обработка отправки формы (загрузка файла)
+// Обработка отправки формы (реальная загрузка)
 const handleUpload = async () => {
     uploadError.value = null;
     // Валидация формы Naive UI
     try {
-        await uploadFormRef.value?.validate();
+        await uploadFormRef.value?.validate(); // Валидируем форму (проверяем наличие файла)
     } catch (errors) {
         message.error("Пожалуйста, выберите PDF файл.");
         console.log('Form validation errors:', errors);
         return;
     }
 
-    if (!formData.value.file) {
-        uploadError.value = "Файл не выбран.";
+    if (!formData.value.file) { // Дополнительная проверка
+        uploadError.value = "Файл не выбран или был удален.";
         return;
     }
 
@@ -176,27 +232,30 @@ const handleUpload = async () => {
 
     // Создаем FormData
     const data = new FormData();
-    data.append('document', formData.value.file); // Ключ 'document' (как в upload.single('document'))
+    // Добавляем файл (с уже транслитерированным именем)
+    data.append('document', formData.value.file);
     if (formData.value.description) {
         data.append('description', formData.value.description);
     }
 
     try {
-        // Вызываем API функцию для загрузки
         const response = await uploadDocumentAdmin(data, {
             // Добавляем обработчик прогресса в axios config
             onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                uploadProgress.value = percentCompleted;
+                if (progressEvent.total) {
+                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                     uploadProgress.value = percentCompleted;
+                }
             }
         });
+        // Используем оригинальное имя из ответа сервера для сообщения
         message.success(`Документ "${response.data.filename}" успешно загружен!`);
-        emit('upload-success', response.data); // Передаем данные о загруженном документе
-        handleClose(); // Закрываем модалку
+        emit('upload-success', response.data);
+        handleClose();
     } catch (err) {
         console.error("Ошибка загрузки документа:", err);
         uploadError.value = err.response?.data?.message || err.message || "Неизвестная ошибка при загрузке файла.";
-        uploadProgress.value = 0; // Сбрасываем прогресс при ошибке
+        uploadProgress.value = 0;
     } finally {
         isUploading.value = false;
     }
@@ -205,18 +264,17 @@ const handleUpload = async () => {
 // Обработка закрытия модального окна
 const handleClose = () => {
     if (!isUploading.value) {
-        resetForm(); // Сбрасываем форму при закрытии
+        resetForm();
         emit('update:show', false);
         emit('close');
     }
 };
 
-// Наблюдаем за пропсом show для синхронизации
+// Наблюдаем за пропсом show
 watch(() => props.show, (newValue) => {
     showModal.value = newValue;
     if (!newValue) {
-        // Сбрасываем форму, если модалка закрывается извне
-        resetForm();
+        resetForm(); // Сбрасываем при закрытии
     }
 });
 

@@ -145,7 +145,6 @@ const handleCloseEditModal = () => {
 const handleSaveDocumentEdit = async (dataToSave) => {
     isSavingEdit.value = true;
     isProcessing.value = true; // Блокируем таблицу
-    editError.value = null; // Сбрасываем предыдущую ошибку (если она была в модалке)
 
     try {
         // Вызываем API для обновления
@@ -209,7 +208,7 @@ const confirmDeleteDocument = (docId, docName) => {
 const renderActions = (row) => {
     return h(NSpace, { size: 'small', justify: 'center' }, () => [
         // Кнопка Просмотр/Скачать
-         h(NButton, { size: 'tiny', type: 'info', ghost: true, tag: 'a', href: getDocumentDownloadUrl(row.id), target: '_blank', title: 'Открыть/скачать документ' }, { default: () => '👁️' }),
+         h(NButton, { size: 'tiny', type: 'info', ghost: true, tag: 'a', href: getDocumentDownloadUrl(row.id), target: '_blank', title: 'Открыть/скачать документ' }, { default: () => h(NIcon, null, { default: () => h('svg', { xmlns:"http://www.w3.org/2000/svg", viewBox:"0 0 24 24" }, [ h('path', { fill:"currentColor", d:"M19 9h-4V3H9v6H5l7 8zM4 19h16v2H4z" }) ]) }) }), // Иконка скачивания
         // === Кнопка Редактировать ===
         h(NButton, {
             size: 'tiny',

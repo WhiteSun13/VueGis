@@ -23,7 +23,7 @@
 <script setup>
 import { ref, onMounted, h, watch } from 'vue';
 import {
-    NSpin, NDataTable, NEmpty, NButton, NSpace, useMessage, useDialog
+    NSpin, NDataTable, NEmpty, NButton, NSpace, NIcon, useMessage, useDialog
 } from 'naive-ui';
 import ManagementSection from '@/components/admin/ManagementSection.vue';
 import EpochFormModal from './EpochFormModal.vue';
@@ -168,11 +168,13 @@ const renderActions = (row) => {
         h(NButton, {
             size: 'tiny', type: 'warning', ghost: true, disabled: isSaving.value || isLoading.value,
             onClick: () => openEditModal(row),
-        }, { default: () => 'Ред.' }),
+            title: 'Редактировать'
+        }, { default: () => h(NIcon, null, { default: () => h('svg', { xmlns:"http://www.w3.org/2000/svg", viewBox:"0 0 24 24" }, [ h('path', { fill:"currentColor", d:"M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z" }) ]) }) }),
         h(NButton, {
             size: 'tiny', type: 'error', ghost: true, disabled: isSaving.value || isLoading.value,
             onClick: () => confirmDeleteEpoch(row.id, row.label),
-        }, { default: () => 'Удал.' }),
+            title: 'Удалить'
+        }, { default: () => h(NIcon, null, { default: () => h('svg', { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24" }, [h('path', { fill: "currentColor", d: "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z" })]) }) })
     ]);
 };
 

@@ -1,120 +1,136 @@
 <template>
     <!-- Модальное окно для Точек -->
-    <n-modal
-        v-model:show="showModal"
-        preset="card"
-        :style="{ width: '800px' }"
-        :title="modalTitle"
-        :bordered="true"
-        :closable="!isSaving && !isLoadingData"
-        :mask-closable="!isSaving && !isLoadingData"
-        @update:show="handleClose"
-        @after-leave="handleAfterLeave"
-    >
+    <n-modal v-model:show="showModal" preset="card" :style="{ width: '800px' }" :title="modalTitle" :bordered="true"
+        :closable="!isSaving && !isLoadingData" :mask-closable="!isSaving && !isLoadingData" @update:show="handleClose"
+        @after-leave="handleAfterLeave">
         <!-- Спиннер для загрузки данных точки или сохранения -->
         <n-spin :show="isLoadingData || isSaving" :description="spinDescription">
             <!-- Форма добавления/редактирования точки -->
             <n-form ref="pointFormRef" :model="formData" @submit.prevent="handleSubmit">
                 <n-grid :cols="2" :x-gap="15">
                     <!-- Поле Название -->
-                    <n-form-item-gi :span="2" path="name" label="Название:" required :rule="{ required: true, message: 'Название обязательно', trigger: ['input', 'blur'] }">
-                        <n-input v-model:value="formData.name" placeholder="Введите название точки" :disabled="isSaving" />
+                    <n-form-item-gi :span="2" path="name" label="Название:" required
+                        :rule="{ required: true, message: 'Название обязательно', trigger: ['input', 'blur'] }">
+                        <n-input v-model:value="formData.name" placeholder="Введите название точки"
+                            :disabled="isSaving" />
                     </n-form-item-gi>
 
                     <!-- Поле Широта -->
-                    <n-form-item-gi path="latitude" label="Широта:" required :rule="{ required: true, type: 'number', message: 'Широта обязательна', trigger: ['input', 'blur'] }">
-                        <n-input-number v-model:value="formData.latitude" step="any" placeholder="Например, 45.12345" style="width: 100%;" :disabled="isSaving" @update:value="onCoordInputChange" />
+                    <n-form-item-gi path="latitude" label="Широта:" required
+                        :rule="{ required: true, type: 'number', message: 'Широта обязательна', trigger: ['input', 'blur'] }">
+                        <n-input-number v-model:value="formData.latitude" step="any" placeholder="Например, 45.12345"
+                            style="width: 100%;" :disabled="isSaving" @update:value="onCoordInputChange" />
                     </n-form-item-gi>
 
                     <!-- Поле Долгота и кнопка карты -->
-                    <n-form-item-gi path="longitude" label="Долгота:" required :rule="{ required: true, type: 'number', message: 'Долгота обязательна', trigger: ['input', 'blur'] }">
+                    <n-form-item-gi path="longitude" label="Долгота:" required
+                        :rule="{ required: true, type: 'number', message: 'Долгота обязательна', trigger: ['input', 'blur'] }">
                         <n-flex>
-                            <n-input-number v-model:value="formData.longitude" step="any" placeholder="Например, 34.56789" style="flex-grow: 1;" :disabled="isSaving" @update:value="onCoordInputChange" />
-                            <n-button @click="toggleMap" type="default" ghost title="Показать/скрыть карту" :disabled="isSaving">
-                                <template #icon><n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7m0 9.5a2.5 2.5 0 0 1 0-5a2.5 2.5 0 0 1 0 5" /></svg></n-icon></template>
+                            <n-input-number v-model:value="formData.longitude" step="any"
+                                placeholder="Например, 34.56789" style="flex-grow: 1;" :disabled="isSaving"
+                                @update:value="onCoordInputChange" />
+                            <n-button @click="toggleMap" type="default" ghost title="Показать/скрыть карту"
+                                :disabled="isSaving">
+                                <template #icon><n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor"
+                                                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7m0 9.5a2.5 2.5 0 0 1 0-5a2.5 2.5 0 0 1 0 5" />
+                                        </svg></n-icon></template>
                             </n-button>
                         </n-flex>
                     </n-form-item-gi>
 
                     <!-- Карта в модальном окне -->
                     <n-form-item-gi :span="2" v-if="showMapInModalState">
-                        <div ref="modalMapContainer" style="width: 100%; height: 300px; border: 1px solid #ccc; margin-top: 10px; position: relative;">
+                        <div ref="modalMapContainer"
+                            style="width: 100%; height: 300px; border: 1px solid #ccc; margin-top: 10px; position: relative;">
                             <n-spin :show="isLoadingModalMapState" description="Загрузка карты..." size="large" />
                         </div>
                     </n-form-item-gi>
 
                     <!-- Поле Тип -->
-                    <n-form-item-gi path="type_id" label="Тип:" required :rule="{ required: true, type: 'number', message: 'Тип обязателен', trigger: ['change', 'blur'] }">
-                        <n-select v-model:value="formData.type_id" placeholder="Выберите тип ОАН" :options="typeOptions" filterable :disabled="isSaving" />
+                    <n-form-item-gi path="type_id" label="Тип:" required
+                        :rule="{ required: true, type: 'number', message: 'Тип обязателен', trigger: ['change', 'blur'] }">
+                        <n-select v-model:value="formData.type_id" placeholder="Выберите тип ОАН" :options="typeOptions"
+                            filterable :disabled="isSaving" />
                     </n-form-item-gi>
 
                     <!-- Поле Эпоха -->
-                    <n-form-item-gi path="epoch_id" label="Эпоха:" required :rule="{ required: true, type: 'number', message: 'Эпоха обязательна', trigger: ['change', 'blur'] }">
-                        <n-select v-model:value="formData.epoch_id" placeholder="Выберите эпоху" :options="epochOptions" filterable :disabled="isSaving" />
+                    <n-form-item-gi path="epoch_id" label="Эпоха:" required
+                        :rule="{ required: true, type: 'number', message: 'Эпоха обязательна', trigger: ['change', 'blur'] }">
+                        <n-select v-model:value="formData.epoch_id" placeholder="Выберите эпоху" :options="epochOptions"
+                            filterable :disabled="isSaving" />
                     </n-form-item-gi>
 
                     <!-- Поле Краткое описание -->
                     <n-form-item-gi :span="2" path="short_description" label="Краткое описание:">
-                        <n-input type="textarea" v-model:value="formData.short_description" placeholder="Введите краткое описание" :autosize="{ minRows: 2, maxRows: 4 }" :disabled="isSaving" />
+                        <n-input type="textarea" v-model:value="formData.short_description"
+                            placeholder="Введите краткое описание" :autosize="{ minRows: 2, maxRows: 4 }"
+                            :disabled="isSaving" />
                     </n-form-item-gi>
 
                     <!-- Поле Полное описание -->
                     <n-form-item-gi :span="2" path="description" label="Полное описание:">
-                        <n-input type="textarea" v-model:value="formData.description" placeholder="Введите полное описание" :autosize="{ minRows: 4, maxRows: 10 }" :disabled="isSaving" />
+                        <n-input type="textarea" v-model:value="formData.description"
+                            placeholder="Введите полное описание" :autosize="{ minRows: 4, maxRows: 10 }"
+                            :disabled="isSaving" />
                     </n-form-item-gi>
 
                     <!-- Секция управления документами -->
                     <n-form-item-gi :span="2" label="Связанные документы:">
-                            <!-- Выпадающий список для выбора существующих документов -->
-                             <n-select
-                                v-model:value="formData.document_ids"
-                                multiple
-                                filterable
-                                placeholder="Выберите или начните вводить имя файла..."
-                                :options="allDocumentOptions"
-                                :loading="isLoadingDocuments"
-                                :disabled="isSaving || isLoadingData"
-                                clearable
-                                style="min-width: 100%;"
-                                #empty
-                            >
-                                Нет доступных документов.
-                            </n-select>
+                        <!-- Выпадающий список для выбора существующих документов -->
+                        <n-select v-model:value="formData.document_ids" multiple filterable
+                            placeholder="Выберите или начните вводить имя файла..." :options="allDocumentOptions"
+                            :loading="isLoadingDocuments" :disabled="isSaving || isLoadingData" clearable
+                            style="min-width: 100%;" #empty>
+                            Нет доступных документов.
+                        </n-select>
                     </n-form-item-gi>
 
-                     <!-- Список уже связанных документов -->
-                     <n-form-item-gi :span="2" v-if="formData.id && associatedDocuments.length > 0" label="Уже привязаны:">
-                        <n-list bordered hoverable clickable style="width: 100%;">
-                            <n-list-item v-for="doc in associatedDocuments" :key="doc.id">
-                                <template #prefix>
-                                    <n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z"/></svg></n-icon>
-                                </template>
-                                <n-thing>
-                                    <template #header>
-                                        <a :href="getDocumentDownloadUrl(doc.id)" target="_blank" rel="noopener noreferrer" class="document-link" :title="doc.description || 'Открыть документ'">
-                                            {{ doc.filename }}
-                                        </a>
-                                    </template>
-                                    <template #description v-if="doc.description">
-                                        {{ doc.description }}
-                                    </template>
-                                </n-thing>
-                                <!-- Кнопка отвязки НЕ НУЖНА, т.к. n-select перезаписывает все связи при сохранении -->
-                            </n-list-item>
-                        </n-list>
+                    <!-- Список уже связанных документов -->
+                    <n-form-item-gi :span="2" v-if="formData.id && associatedDocuments.length > 0"
+                        label="Уже привязаны:">
+                        <n-collapse>
+                            <n-collapse-item title="Список" name="1">
+                                <n-list bordered hoverable clickable style="width: 100%;">
+                                    <n-list-item v-for="doc in associatedDocuments" :key="doc.id">
+                                        <template #prefix>
+                                            <n-icon><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path fill="currentColor"
+                                                        d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z" />
+                                                </svg></n-icon>
+                                        </template>
+                                        <n-thing>
+                                            <template #header>
+                                                <a :href="getDocumentDownloadUrl(doc.id)" target="_blank"
+                                                    rel="noopener noreferrer" class="document-link"
+                                                    :title="doc.description || 'Открыть документ'">
+                                                    {{ doc.filename }}
+                                                </a>
+                                            </template>
+                                            <template #description v-if="doc.description">
+                                                {{ doc.description }}
+                                            </template>
+                                        </n-thing>
+                                        <!-- Кнопка отвязки НЕ НУЖНА, т.к. n-select перезаписывает все связи при сохранении -->
+                                    </n-list-item>
+                                </n-list>
+                            </n-collapse-item>
+                        </n-collapse>
                     </n-form-item-gi>
 
                 </n-grid>
 
                 <!-- Отображение ошибки -->
-                <n-alert v-if="modalError" title="Ошибка" type="error" closable @close="modalError = null" style="margin-top: 15px; margin-bottom: 15px;">
+                <n-alert v-if="modalError" title="Ошибка" type="error" closable @close="modalError = null"
+                    style="margin-top: 15px; margin-bottom: 15px;">
                     {{ modalError }}
                 </n-alert>
 
                 <!-- Кнопки управления -->
                 <n-flex justify="end" style="margin-top: 20px;">
                     <n-button @click="handleClose" :disabled="isSaving || isLoadingData">Отмена</n-button>
-                    <n-button type="primary" attr-type="submit" :loading="isSaving" :disabled="isLoadingData || isSaving">
+                    <n-button type="primary" attr-type="submit" :loading="isSaving"
+                        :disabled="isLoadingData || isSaving">
                         Сохранить
                     </n-button>
                 </n-flex>
@@ -127,7 +143,7 @@
 import { ref, watch, computed, nextTick } from 'vue';
 import {
     NModal, NSpin, NForm, NFormItemGi, NInput, NSelect, NInputNumber, NGrid,
-    NAlert, NFlex, NButton, NIcon, useMessage, NList, NListItem, NThing
+    NAlert, NFlex, NButton, NIcon, useMessage, NList, NListItem, NThing, NCollapse, NCollapseItem
 } from 'naive-ui';
 // Импортируем утилиты для карты
 import {
@@ -259,8 +275,8 @@ const toggleMap = async () => {
         await nextTick(); // Ждем рендеринга контейнера
         // Передаем текущие координаты из formData
         const initialPointData = {
-             latitude: formData.value.latitude,
-             longitude: formData.value.longitude
+            latitude: formData.value.latitude,
+            longitude: formData.value.longitude
         };
         initModalMap(initialPointData, handleCoordsUpdateFromMap, message);
     }
@@ -314,38 +330,54 @@ watch(() => props.itemData, resetForm, { deep: true });
 
 <style scoped>
 .n-form-item-gi {
-    padding-bottom: 5px; /* Небольшой отступ для полей формы */
+    padding-bottom: 5px;
+    /* Небольшой отступ для полей формы */
 }
+
 .n-layout-content {
-    background-color: #f8f9fa; /* Фон для основного контента, если нужно */
+    background-color: #f8f9fa;
+    /* Фон для основного контента, если нужно */
 }
+
 .n-form-item-gi .n-flex {
-    width: 100%; /* Растягиваем flex контейнер в FormItem */
+    width: 100%;
+    /* Растягиваем flex контейнер в FormItem */
 }
+
 /* Стили для контейнера карты */
 [ref="modalMapContainer"] {
-    position: relative; /* Для позиционирования спиннера */
-    background-color: #eee; /* Фон на время загрузки карты */
+    position: relative;
+    /* Для позиционирования спиннера */
+    background-color: #eee;
+    /* Фон на время загрузки карты */
     border: 1px solid #ccc;
     margin-top: 10px;
 }
 
 /* Стили для списка связанных документов */
 .n-list-item a.document-link {
-    color: var(--n-item-text-color, inherit); /* Цвет текста из темы Naive UI или наследуемый */
+    color: var(--n-item-text-color, inherit);
+    /* Цвет текста из темы Naive UI или наследуемый */
     text-decoration: none;
     transition: color 0.3s ease;
 }
+
 .n-list-item a.document-link:hover {
-     color: var(--n-color-target, #18a058); /* Основной цвет темы Naive UI при наведении */
-     text-decoration: underline;
+    color: var(--n-color-target, #18a058);
+    /* Основной цвет темы Naive UI при наведении */
+    text-decoration: underline;
 }
+
 .n-list-item .n-thing-header {
-    margin-bottom: 2px; /* Уменьшаем отступ под ссылкой, если есть описание */
+    margin-bottom: 2px;
+    /* Уменьшаем отступ под ссылкой, если есть описание */
 }
+
 .n-list-item .n-thing-description {
-    font-size: 0.85em; /* Чуть меньше шрифт для описания */
-    color: var(--n-description-text-color, grey); /* Цвет описания из темы */
+    font-size: 0.85em;
+    /* Чуть меньше шрифт для описания */
+    color: var(--n-description-text-color, grey);
+    /* Цвет описания из темы */
     line-height: 1.3;
 }
 </style>
